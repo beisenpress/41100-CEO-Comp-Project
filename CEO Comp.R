@@ -8,3 +8,4 @@ Financials <- read.csv("NA GVKey 1.csv")
 
 # Merge two dataset
 combined <- merge(ExecuComp,Financials, by = "GVKEY")
+
