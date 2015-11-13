@@ -25,3 +25,11 @@ CEO_Errors <- combined[which(combined$CEO_Flag0 != combined$CEO_Flag3),]
 
 # Create a flag for CEO using either the PCEO variable or the CEOANN variable or the TITLE Variable
 combined$CEO_Flag0 <- combined$CEO_Flag1|combined$CEO_Flag2|combined$CEO_Flag3
+
+ceo <- combined[which(combined$CEO_Flag0 == 1),]
+
+######### Simple Regression  #######
+
+# Regress total compensation on total assets, total Cash, Dividents, and total liabilities
+reg1 <- lm(TDC1 ~ at + ch + dvt +  lt, data = ceo)
+summary(reg1)
