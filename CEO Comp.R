@@ -4,46 +4,58 @@ setwd("/Users/ben/dropbox/Chicago Booth/41100 Regressions/Project")
 ExecuComp <- read.csv("Execucomp GVKey All.csv")
 
 # Import financials data from Compustat North America dataset
-Financials <- read.csv("NA GVKey 1.csv")
+Financials <- read.csv("Initial Proposal Data.csv")
 
-# Merge two dataset
-combined <- merge(ExecuComp,Financials, by = "GVKEY")
-
+###### Add Measures of financial data
+attach(Financials)
+Financials$mv = csho * prcc_c
+# Financials$ev = (mv + dlc + dltt + pstk) - che
+Financials$ev = (mv + dcpstk + dltt) - che
 
 ########## CEO Flags ##############
 # Create an indicator variable for CEO using the PCEO variable
-combined$CEO_Flag1 <- ifelse(combined$PCEO == "CEO", 1, 0)
+ExecuComp$CEO_Flag1 <- ifelse(ExecuComp$PCEO == "CEO", 1, 0)
 
 # Create an indicator variable for CEO using the TITLE variable
-combined$CEO_Flag2 <- ifelse((regexpr("Chief Executive Officer", combined$TITLE) + 1)>0,1,0)
+ExecuComp$CEO_Flag2 <- ifelse((regexpr("Chief Executive Officer", ExecuComp$TITLE) + 1)>0,1,0)
 
 # Create an indicator variable for CEO using the PCEO variable
-combined$CEO_Flag3 <- ifelse(combined$CEOANN == "CEO", 1, 0)
-
-# Get a subset of data where the two CEO flags do not macth
-CEO_Errors <- combined[which(combined$CEO_Flag0 != combined$CEO_Flag3),]
+ExecuComp$CEO_Flag3 <- ifelse(ExecuComp$CEOANN == "CEO", 1, 0)
 
 # Create a flag for CEO using either the PCEO variable or the CEOANN variable or the TITLE Variable
-combined$CEO_Flag0 <- combined$CEO_Flag1|combined$CEO_Flag2|combined$CEO_Flag3
+ExecuComp$CEO_Flag0 <- ExecuComp$CEO_Flag1|ExecuComp$CEO_Flag2|ExecuComp$CEO_Flag3
+
+# Narrow down data to only CEO Data
+ceo.comp <- combined[which(ExecuComp$CEO_Flag0 == 1),]
+
+######### Merge Data #######################
+
+# Merge two dataset
+combined.all <- merge(ceo.comp,Financials, by = "GVKEY")
 
 ############## Narrow down data ################
 
 # Get only publically traded companies
-combined.public <- combined[which(combined$EXCHANGE %in% c("NYS","ASE","NAS")),]
-
-# Get dataset of all CEOs
-ceo <- combined[which(combined.public$CEO_Flag0 == 1),]
+combined.public <- combined.all[which(combined.all$EXCHANGE %in% c("NYS","ASE","NAS")),]
 
 ######### Simple Regression  #######
 
 # Drop observations where CEO has positive pay
-ceo1 <- ceo[which(ceo$TDC1 >0),]
+combined.public1 <- combined.public[which(combined.public$TDC1 >0),]
+combined.public2 <- combined.public1[which(combined.public1$ev >0),]
 
 # Regress total compensation on total assets, total Cash, Dividents, and total liabilities
-reg1 <- lm(log(TDC1) ~ at + ch + dvt +  lt, data = ceo1)
+reg1 <- lm(log(TDC1) ~ log(ev), data = combined.public2)
 summary(reg1)
+plot(combined.public1$ev, log(combined.public1$TDC1))
 
 plot(reg1$fitted.values,rstudent(reg1), pch=20, main = "Fitted Values and Studentized Residuals")
+
+
+
+
+
+
 
 ###### Check of Exchanges ########
 exchg <- unique(data.frame(combined$exchg, combined$EXCHANGE))
