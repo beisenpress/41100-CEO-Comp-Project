@@ -26,7 +26,7 @@ ExecuComp$CEO_Flag3 <- ifelse(ExecuComp$CEOANN == "CEO", 1, 0)
 ExecuComp$CEO_Flag0 <- ExecuComp$CEO_Flag1|ExecuComp$CEO_Flag2|ExecuComp$CEO_Flag3
 
 # Narrow down data to only CEO Data
-ceo.comp <- combined[which(ExecuComp$CEO_Flag0 == 1),]
+ceo.comp <- ExecuComp[which(ExecuComp$CEO_Flag0 == 1),]
 
 ######### Merge Data #######################
 
@@ -41,13 +41,16 @@ combined.public <- combined.all[which(combined.all$EXCHANGE %in% c("NYS","ASE","
 ######### Simple Regression  #######
 
 # Drop observations where CEO has positive pay
-combined.public1 <- combined.public[which(combined.public$TDC1 >0),]
+combined.public1 <- combined.public[which(combined.public$TDC1 >0.1),]
 combined.public2 <- combined.public1[which(combined.public1$ev >0),]
+combined.public3 <- combined.public2[which(combined.public2$ebitda >0),]
+
+
 
 # Regress total compensation on total assets, total Cash, Dividents, and total liabilities
-reg1 <- lm(log(TDC1) ~ log(ev), data = combined.public2)
+reg1 <- lm(log(TDC1) ~ log(ev) + log(ebitda), data = combined.public3)
 summary(reg1)
-plot(combined.public1$ev, log(combined.public1$TDC1))
+plot(log(combined.public1$emp), log(combined.public1$TDC1))
 
 plot(reg1$fitted.values,rstudent(reg1), pch=20, main = "Fitted Values and Studentized Residuals")
 
