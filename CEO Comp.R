@@ -26,8 +26,13 @@ CEO_Errors <- combined[which(combined$CEO_Flag0 != combined$CEO_Flag3),]
 # Create a flag for CEO using either the PCEO variable or the CEOANN variable or the TITLE Variable
 combined$CEO_Flag0 <- combined$CEO_Flag1|combined$CEO_Flag2|combined$CEO_Flag3
 
+############## Narrow down data ################
+
+# Get only publically traded companies
+combined.public <- combined[which(combined$EXCHANGE %in% c("NYS","ASE","NAS")),]
+
 # Get dataset of all CEOs
-ceo <- combined[which(combined$CEO_Flag0 == 1),]
+ceo <- combined[which(combined.public$CEO_Flag0 == 1),]
 
 ######### Simple Regression  #######
 
@@ -39,3 +44,13 @@ reg1 <- lm(log(TDC1) ~ at + ch + dvt +  lt, data = ceo1)
 summary(reg1)
 
 plot(reg1$fitted.values,rstudent(reg1), pch=20, main = "Fitted Values and Studentized Residuals")
+
+###### Check of Exchanges ########
+exchg <- unique(data.frame(combined$exchg, combined$EXCHANGE))
+exchg1 <- c(paste(combined$exchg, combined$EXCHANGE))
+table(exchg1)
+exh.errors <- combined[which(combined$exchg == 19 & combined$EXCHANGE == "NYS"),]
+# One companty is 1 NYS.  It is KCI, which is not traded
+# One company is 0 NYS.  It is intergys, which was aquired in 2015
+# Two compaanies are 19 NYS. One is quicksilver, which went bankrupt in 2015
+# So lets use the exchange varialbe from Execucomp
