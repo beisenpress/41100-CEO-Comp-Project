@@ -4,7 +4,7 @@ setwd("/Users/ben/dropbox/Chicago Booth/41100 Regressions/Project")
 ExecuComp <- read.csv("Execucomp GVKey All.csv")
 
 # Import financials data from Compustat North America dataset
-Financials <- read.csv("Initial Proposal Data.csv")
+Financials <- read.csv("Select Total X Variables.csv")
 
 ###### Add variables to financial data
 Financials$mv = Financials$csho * Financials$prcc_c
@@ -34,6 +34,9 @@ ceo.dups <- ceo.comp.test[(duplicated(ceo.comp.test$GVKEY) | duplicated(ceo.comp
 # There a a lot of duplicate CEOs.  Therefore, we should just use CEOANN
 
 ################ Select CEOs from Data ####################
+# Barnes & Noble's CEO is not flagged.  Fix that manually:
+ExecuComp$CEOANN[which(ExecuComp$EXECID == 45006)] = "CEO"
+
 ceo.comp <- ExecuComp[which(ExecuComp$CEOANN == "CEO"),]
 
 # Check for any duplicates.  This should be false.
@@ -45,26 +48,24 @@ any(duplicated(ceo.comp$GVKEY))
 # data record. This allows you to view a company (such as Aetna) as an industrial company or 
 # as a financial services company.”
 # To avoid duplicates we are going to select the industiral companies.
-financials.industrial <- Financials[which(Financials$indfmt == "INDL"),]
+financials2 <- Financials[which(Financials$indfmt == "INDL"),]
 
 # Select only 2014 data
-financials.industrial.2014 <- financials.industrial[which(financials.industrial$fyear == 2014),]
+financials3 <- financials2[which(financials2$fyear == 2014),]
+
+# Select only companies that report in USD data
+financials4 <- financials3[which(financials3$curcd == "USD"),]
 
 # Check for any duplicates.
-merge.dupes <- financials.industrial.2014[(duplicated(financials.industrial.2014$GVKEY) | duplicated(financials.industrial.2014$GVKEY, fromLast = TRUE)),]
-
-# There is one company with two enteries because the company has updated data.  Delete it.
-financials.industrial.2014.2 <- financials.industrial.2014[which(
-                                      !(financials.industrial.2014$GVKEY == 20966 & 
-                                          financials.industrial.2014$datadate == 20140430)),]
+merge.dupes <- financials4[(duplicated(financials4$GVKEY) | duplicated(financials4$GVKEY, fromLast = TRUE)),]
 
 # Duplicate check. Should be false
-any(duplicated(financials.industrial.2014.2$GVKEY))
+any(duplicated(financials4$GVKEY))
 
 ######### Merge Data #######################
 
 # Merge two datasets
-combined1 <- merge(ceo.comp,financials.industrial.2014.2, by = "GVKEY")
+combined1 <- merge(ceo.comp,financials4, by = "GVKEY")
 
 # Check for duplicates
 any(duplicated(combined1$GVKEY))
@@ -75,7 +76,9 @@ any(duplicated(combined1$GVKEY))
 combined2 <- combined1[which(combined1$EXCHANGE %in% c("NYS","ASE","NAS")),]
 
 # Remove CEOs that are paid $1 or less.  Observations are not part of what we want to predict.
-combined3 <- combined2[which(combined2$TDC1 >= 0.001),]
+combined3 <- combined2[which(combined2$TDC1 > 0.001),]
+
+removedCEOs <- combined2[which(combined2$TDC1 <= 0.001),]
 
 ########### Scale Variables ##################
 combined3$log.TDC1 <- log(combined3$TDC1)
