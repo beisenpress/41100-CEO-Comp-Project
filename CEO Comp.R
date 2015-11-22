@@ -6,61 +6,97 @@ ExecuComp <- read.csv("Execucomp GVKey All.csv")
 # Import financials data from Compustat North America dataset
 Financials <- read.csv("Initial Proposal Data.csv")
 
-###### Add Measures of financial data
-attach(Financials)
-Financials$mv = csho * prcc_c
+###### Add variables to financial data
+Financials$mv = Financials$csho * Financials$prcc_c
 # Financials$ev = (mv + dlc + dltt + pstk) - che
-Financials$ev = (mv + dcpstk + dltt) - che
+Financials$ev = rowSums(cbind(Financials$mv, Financials$dcpstk, Financials$dltt, -Financials$che), na.rm=TRUE)
 
-########## CEO Flags ##############
-# Create an indicator variable for CEO using the PCEO variable
-ExecuComp$CEO_Flag1 <- ifelse(ExecuComp$PCEO == "CEO", 1, 0)
+########## Diagnostics CEO Flags ##############
+# Check that PCEO and CEOANN are identical. 
+# Because we are using the most recent year's data, this should return "integer(0)"
+which(ExecuComp$PCEO != ExecuComp$CEOANN)
+
+# Create an indicator variable for CEO using the CEOANN variable
+ExecuComp$CEO_Flag1 <- ifelse(ExecuComp$CEOANN == "CEO", 1, 0)
 
 # Create an indicator variable for CEO using the TITLE variable
 ExecuComp$CEO_Flag2 <- ifelse((regexpr("Chief Executive Officer", ExecuComp$TITLE) + 1)>0,1,0)
 
-# Create an indicator variable for CEO using the PCEO variable
-ExecuComp$CEO_Flag3 <- ifelse(ExecuComp$CEOANN == "CEO", 1, 0)
-
-# Create a flag for CEO using either the PCEO variable or the CEOANN variable or the TITLE Variable
-ExecuComp$CEO_Flag0 <- ExecuComp$CEO_Flag1|ExecuComp$CEO_Flag2|ExecuComp$CEO_Flag3
+# Create a flag for CEO using the CEOANN variable and the TITLE Variable
+ExecuComp$CEO_Flag0 <- ExecuComp$CEO_Flag1|ExecuComp$CEO_Flag2
 
 # Narrow down data to only CEO Data
-ceo.comp <- ExecuComp[which(ExecuComp$CEO_Flag0 == 1),]
+ceo.comp.test <- ExecuComp[which(ExecuComp$CEO_Flag0 == 1),]
+
+# Check for duplicate CEOs
+ceo.dups <- ceo.comp.test[(duplicated(ceo.comp.test$GVKEY) | duplicated(ceo.comp.test$GVKEY, fromLast = TRUE)),]
+
+# There a a lot of duplicate CEOs.  Therefore, we should just use CEOANN
+
+################ Select CEOs from Data ####################
+ceo.comp <- ExecuComp[which(ExecuComp$CEOANN == "CEO"),]
+
+# Check for any duplicates.  This should be false.
+any(duplicated(ceo.comp$GVKEY))
+
+############ Select type of financial data used #########
+# COMPUSTAT has a variable Industry Format (INDFMT.) 
+# From compustat, it “describes the general industry presentation for the associated 
+# data record. This allows you to view a company (such as Aetna) as an industrial company or 
+# as a financial services company.”
+# To avoid duplicates we are going to select the industiral companies.
+financials.industrial <- Financials[which(Financials$indfmt == "INDL"),]
+
+# Select only 2014 data
+financials.industrial.2014 <- financials.industrial[which(financials.industrial$fyear == 2014),]
+
+# Check for any duplicates.
+merge.dupes <- financials.industrial.2014[(duplicated(financials.industrial.2014$GVKEY) | duplicated(financials.industrial.2014$GVKEY, fromLast = TRUE)),]
+
+# There is one company with two enteries because the company has updated data.  Delete it.
+financials.industrial.2014.2 <- financials.industrial.2014[which(
+                                      !(financials.industrial.2014$GVKEY == 20966 & 
+                                          financials.industrial.2014$datadate == 20140430)),]
+
+# Duplicate check. Should be false
+any(duplicated(financials.industrial.2014.2$GVKEY))
 
 ######### Merge Data #######################
 
-# Merge two dataset
-combined.all <- merge(ceo.comp,Financials, by = "GVKEY")
+# Merge two datasets
+combined1 <- merge(ceo.comp,financials.industrial.2014.2, by = "GVKEY")
+
+# Check for duplicates
+any(duplicated(combined1$GVKEY))
 
 ############## Narrow down data ################
 
 # Get only publically traded companies
-combined.public <- combined.all[which(combined.all$EXCHANGE %in% c("NYS","ASE","NAS")),]
+combined2 <- combined1[which(combined1$EXCHANGE %in% c("NYS","ASE","NAS")),]
+
+# Remove CEOs that are paid $1 or less.  Observations are not part of what we want to predict.
+combined3 <- combined2[which(combined2$TDC1 >= 0.001),]
+
+########### Scale Variables ##################
+combined3$log.TDC1 <- log(combined3$TDC1)
+
+# Create acalculated TDC1 variable.  This will help us break up the components later.
+combined3$TDC1_Calc <- rowSums(cbind(combined3$SALARY, combined3$BONUS, combined3$NONEQ_INCENT, 
+                                     combined3$STOCK_AWARDS_FV, combined3$OPTION_AWARDS_FV, 
+                                     combined3$DEFER_RPT_AS_COMP_TOT, combined3$OTHCOMP), 
+                               na.rm=TRUE)
 
 ######### Simple Regression  #######
 
-# Drop observations where CEO has positive pay
-combined.public1 <- combined.public[which(combined.public$TDC1 >0.1),]
-combined.public2 <- combined.public1[which(combined.public1$ev >0),]
-combined.public3 <- combined.public2[which(combined.public2$ebitda >0),]
-
-
-
 # Regress total compensation on total assets, total Cash, Dividents, and total liabilities
-reg1 <- lm(log(TDC1) ~ log(ev) + log(ebitda), data = combined.public3)
+reg1 <- lm(log(TDC1) ~ ev + ebitda, data = combined3)
 summary(reg1)
 plot(log(combined.public1$emp), log(combined.public1$TDC1))
 
 plot(reg1$fitted.values,rstudent(reg1), pch=20, main = "Fitted Values and Studentized Residuals")
 
 
-
-
-
-
-
-###### Check of Exchanges ########
+###### Diagnostics: Check of Exchanges ########
 exchg <- unique(data.frame(combined$exchg, combined$EXCHANGE))
 exchg1 <- c(paste(combined$exchg, combined$EXCHANGE))
 table(exchg1)
