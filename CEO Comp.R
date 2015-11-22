@@ -6,6 +6,9 @@ ExecuComp <- read.csv("Execucomp GVKey All.csv")
 # Import financials data from Compustat North America dataset
 Financials <- read.csv("Select Total X Variables.csv")
 
+# Change "gvkey" to "GVKEY" so the data will merge
+names(Financials)[1] <- "GVKEY"
+
 ###### Add variables to financial data
 Financials$mv = Financials$csho * Financials$prcc_c
 # Financials$ev = (mv + dlc + dltt + pstk) - che
