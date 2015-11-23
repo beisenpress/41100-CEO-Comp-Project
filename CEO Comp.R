@@ -10,31 +10,13 @@ Financials <- read.csv("Select Total X Variables.csv")
 names(Financials)[1] <- "GVKEY"
 
 ###### Add variables to financial data
+# Calculate Market Value
 Financials$mv = Financials$csho * Financials$prcc_c
-# Financials$ev = (mv + dlc + dltt + pstk) - che
-Financials$ev = rowSums(cbind(Financials$mv, Financials$dcpstk, Financials$dltt, -Financials$che), na.rm=TRUE)
 
-########## Diagnostics CEO Flags ##############
-# Check that PCEO and CEOANN are identical. 
-# Because we are using the most recent year's data, this should return "integer(0)"
-which(ExecuComp$PCEO != ExecuComp$CEOANN)
+# Calculate enterprise value
+Financials$ev = rowSums(cbind(Financials$mv, Financials$dlc, Financials$dltt, 
+                              Financials$pstk, -Financials$che), na.rm=TRUE)
 
-# Create an indicator variable for CEO using the CEOANN variable
-ExecuComp$CEO_Flag1 <- ifelse(ExecuComp$CEOANN == "CEO", 1, 0)
-
-# Create an indicator variable for CEO using the TITLE variable
-ExecuComp$CEO_Flag2 <- ifelse((regexpr("Chief Executive Officer", ExecuComp$TITLE) + 1)>0,1,0)
-
-# Create a flag for CEO using the CEOANN variable and the TITLE Variable
-ExecuComp$CEO_Flag0 <- ExecuComp$CEO_Flag1|ExecuComp$CEO_Flag2
-
-# Narrow down data to only CEO Data
-ceo.comp.test <- ExecuComp[which(ExecuComp$CEO_Flag0 == 1),]
-
-# Check for duplicate CEOs
-ceo.dups <- ceo.comp.test[(duplicated(ceo.comp.test$GVKEY) | duplicated(ceo.comp.test$GVKEY, fromLast = TRUE)),]
-
-# There a a lot of duplicate CEOs.  Therefore, we should just use CEOANN
 
 ################ Select CEOs from Data ####################
 # Barnes & Noble's CEO is not flagged.  Fix that manually:
@@ -83,24 +65,61 @@ combined3 <- combined2[which(combined2$TDC1 > 0.001),]
 
 removedCEOs <- combined2[which(combined2$TDC1 <= 0.001),]
 
-########### Scale Variables ##################
-combined3$log.TDC1 <- log(combined3$TDC1)
+############# Additinal Variables ############
+# Create a new dataset, combined4, to add new variables
+combined4 <- combined3
 
 # Create acalculated TDC1 variable.  This will help us break up the components later.
-combined3$TDC1_Calc <- rowSums(cbind(combined3$SALARY, combined3$BONUS, combined3$NONEQ_INCENT, 
-                                     combined3$STOCK_AWARDS_FV, combined3$OPTION_AWARDS_FV, 
-                                     combined3$DEFER_RPT_AS_COMP_TOT, combined3$OTHCOMP), 
+combined4$TDC1_Calc <- rowSums(cbind(combined4$SALARY, combined4$BONUS, combined4$NONEQ_INCENT, 
+                                     combined4$STOCK_AWARDS_FV, combined4$OPTION_AWARDS_FV, 
+                                     combined4$DEFER_RPT_AS_COMP_TOT, combined4$OTHCOMP), 
                                na.rm=TRUE)
 
-######### Simple Regression  #######
+# Calculate the components of ev as a percent of ev.
+combined4$dlc_ev <- combined4$dlc / combined4$ev
+combined4$dltt_ev <- combined4$dltt / combined4$ev
+combined4$pstk_ev <- combined4$pstk / combined4$ev
+combined4$che_ev <- combined4$che / combined4$ev
 
-# Regress total compensation on total assets, total Cash, Dividents, and total liabilities
-reg1 <- lm(log(TDC1) ~ ev + ebitda, data = combined3)
+############## Split data into training and test ###################
+# Set seed so the results are replicable 
+set.seed(9)
+
+# Select a random sample of rows
+samples <- sort(sample.int(nrow(combined4), 0.80*nrow(combined4)))
+
+# Subset the data into training and test datasets.
+train <- combined4[samples,] 
+test <- combined4[-samples,]
+
+##################### Regressions  #################################
+
+# Regress log total compensation on log market value
+reg1 <- lm(log(TDC1) ~ log(mv) , data = train)
 summary(reg1)
-plot(log(combined.public1$emp), log(combined.public1$TDC1))
-
+plot(log(train$mv),log(train$TDC1),pch=20)
+abline(reg1)
 plot(reg1$fitted.values,rstudent(reg1), pch=20, main = "Fitted Values and Studentized Residuals")
+abline(h=0)
 
+# Regress log total compensation on log market value. 
+#Also control composition of EV
+reg2 <- lm(log(TDC1) ~ log(mv) + dlc_ev + dltt_ev + pstk_ev + che_ev, data = train)
+summary(reg2)
+plot(reg2$fitted.values,rstudent(reg2), pch=20, main = "Fitted Values and Studentized Residuals")
+abline(h=0)
+
+# Compare the two regressions on EV using BIC.
+BIC <- c(reg1=extractAIC(reg1, k=log(nrow(train)))[2],
+         reg2=extractAIC(reg2, k=log(nrow(train)))[2])
+BIC
+
+# Apply the formula e^((-1/2)*BIC) to each element of the array. 
+eBIC <- exp(-0.5*(BIC-min(BIC)))
+
+# Calculate the probabliliy by dividing each eBIC by the sum of all eBIC values
+probs <- eBIC/sum(eBIC)
+round(probs, 5)
 
 ###### Diagnostics: Check of Exchanges ########
 exchg <- unique(data.frame(combined$exchg, combined$EXCHANGE))
@@ -111,3 +130,26 @@ exh.errors <- combined[which(combined$exchg == 19 & combined$EXCHANGE == "NYS"),
 # One company is 0 NYS.  It is intergys, which was aquired in 2015
 # Two compaanies are 19 NYS. One is quicksilver, which went bankrupt in 2015
 # So lets use the exchange varialbe from Execucomp
+
+########## Diagnostics CEO Flags ##############
+# Check that PCEO and CEOANN are identical. 
+# Because we are using the most recent year's data, this should return "integer(0)"
+which(ExecuComp$PCEO != ExecuComp$CEOANN)
+
+# Create an indicator variable for CEO using the CEOANN variable
+ExecuComp$CEO_Flag1 <- ifelse(ExecuComp$CEOANN == "CEO", 1, 0)
+
+# Create an indicator variable for CEO using the TITLE variable
+ExecuComp$CEO_Flag2 <- ifelse((regexpr("Chief Executive Officer", ExecuComp$TITLE) + 1)>0,1,0)
+
+# Create a flag for CEO using the CEOANN variable and the TITLE Variable
+ExecuComp$CEO_Flag0 <- ExecuComp$CEO_Flag1|ExecuComp$CEO_Flag2
+
+# Narrow down data to only CEO Data
+ceo.comp.test <- ExecuComp[which(ExecuComp$CEO_Flag0 == 1),]
+
+# Check for duplicate CEOs
+ceo.dups <- ceo.comp.test[(duplicated(ceo.comp.test$GVKEY) | duplicated(ceo.comp.test$GVKEY, fromLast = TRUE)),]
+
+# There a a lot of duplicate CEOs.  Therefore, we should just use CEOANN
+
