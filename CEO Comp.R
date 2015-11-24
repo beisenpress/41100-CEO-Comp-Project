@@ -1,10 +1,10 @@
 
 
 #setwd("/Users/ben/dropbox/Chicago Booth/41100 Regressions/Project")
-setwd("/Users\Leixin Zhao/Desktop/2015_16 Fall/41100 Applied Regression/Final Paper/41100-CEO-Comp-Project")
+setwd("/Users/Leixin Zhao/Desktop/2015_16 Fall/41100 Applied Regression/Final Paper/41100-CEO-Comp-Project")
 
 # Import compensation data from Compustat ExecuComp dataset
-ExecuComp <- read.csv("Execucomp GVKey All.csv")
+ExecuComp <- read.csv("Execucomp GVKey Cleansed.csv")
 
 # Import financials data from Compustat North America dataset
 Financials <- read.csv("Select Total X Variables.csv")
