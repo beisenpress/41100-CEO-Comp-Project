@@ -96,26 +96,91 @@ samples <- sort(sample.int(nrow(combined4), 0.80*nrow(combined4)))
 train <- combined4[samples,] 
 test <- combined4[-samples,]
 
-##################### Regressions  #################################
+##################### Enterprise Value Regressions  #################################
+
+# Plot TDC1 against all financial variables Logged
+# Plots will be missing points where there are missing values, but thats OK for now
+par(mfrow=c(1,3))
+plot(log(train$mv),log(train$TDC1),pch=20,xlab = "Log of Market Value", ylab = "Log of TDC1", main = "Market Value")
+plot(log(train$dlc),log(train$TDC1),pch=20,xlab = "Log of Debt in Current Liabilities", ylab = "Log of TDC1", main = "Short-term Debt")
+plot(log(train$dltt),log(train$TDC1),pch=20,xlab = "Log of Long Term Debt", ylab = "Log of TDC1", main = "Long Term Debt")
+plot(log(train$pstk),log(train$TDC1),pch=20,xlab = "Log of Preferred Stock", ylab = "Log of TDC1", main = "Preferred Stock")
+plot(log(train$che),log(train$TDC1),pch=20,xlab = "Log of Cash", ylab = "Log of TDC1", main = "Cash")
+
+# Market value has the best relationship, followed by Long term debt.
+
 
 # Regress log total compensation on log market value
 reg1 <- lm(log(TDC1) ~ log(mv) , data = train)
 summary(reg1)
-plot(log(train$mv),log(train$TDC1),pch=20)
+par(mfrow=c(1,1))
+plot(log(train$mv),log(train$TDC1),pch=20,xlab = "Log of Market Value", ylab = "Log of TDC1", main = "Market Value")
 abline(reg1)
+
+# Can argue market value is more important than makret value because shareholders
+# serve as the check on executive compensation, and shareholders care about MV.
+
+# Show diagnosic plots
+par(mfrow=c(1,3))
 plot(reg1$fitted.values,rstudent(reg1), pch=20, main = "Fitted Values and Studentized Residuals")
-abline(h=0)
+hist(rstudent(reg1))
+qqnorm(rstudent(reg1))
+abline(a=0,b=1)
+
+# Examine companies with very low studentized residuals
+
+# Create dataset of relevent variables
+reg1.diagnositcs <- train[which(!is.na(train$mv)),]
+reg1.diagnositcs$fitted.values <- reg1$fitted.values
+reg1.diagnositcs$residuals <- reg1$residuals
+reg1.diagnositcs$stresiduals <- rstudent(reg1)
+write.csv(reg1.diagnositcs[which(reg1.diagnositcs$stresiduals < -4),c("EXEC_FULLNAME", "CONAME", "TDC1", "mv","stresiduals")], file = "reg1.diagnostics")
+
+# All of the large residuals are negative - i.e. CEOs making way less than we predict.
+# Two of the largest (using this trianing sample) are Steve Balmer of Microsoft and
+# Warren Buffett of Berkshire Hathaway.  It is hard to predict for CEOs that simply 
+# choose to accept a lower salary.
 
 # Regress log total compensation on log market value. 
 #Also control composition of EV
-reg2 <- lm(log(TDC1) ~ log(mv) + dlc_ev + dltt_ev + pstk_ev + che_ev, data = train)
+reg2 <- lm(log(TDC1) ~ log(mv) + dlc + dltt + pstk + che, data = train)
 summary(reg2)
+
+# Show diagnosic plots
+par(mfrow=c(1,3))
 plot(reg2$fitted.values,rstudent(reg2), pch=20, main = "Fitted Values and Studentized Residuals")
-abline(h=0)
+hist(rstudent(reg2))
+qqnorm(rstudent(reg2))
+abline(a=0,b=1)
+
+# Create dataset of relevent variables
+reg2.AIC <- step(reg1, scope=formula(reg2), direction="forward", k=2)
+reg2.BIC <- step(reg1, scope=formula(reg2), direction="forward", k=log(nrow(train)))
+summary(reg2.BIC)
+
+
+# Regress log total compensation on log market value. 
+#Also control composition of EV
+reg3 <- lm(log(TDC1) ~ log(mv) + dlc + dltt + che, data = train)
+summary(reg3)
+
+# Show diagnosic plots
+par(mfrow=c(1,3))
+plot(reg3$fitted.values,rstudent(reg3), pch=20, main = "Fitted Values and Studentized Residuals")
+hist(rstudent(reg3))
+qqnorm(rstudent(reg3))
+abline(a=0,b=1)
+
+# Create dataset of relevent variables
+reg3.AIC <- step(reg1, scope=formula(reg3), direction="forward", k=2)
+reg3.BIC <- step(reg1, scope=formula(reg3), direction="forward", k=log(nrow(train)))
+summary(reg3.AIC)
+
 
 # Compare the two regressions on EV using BIC.
 BIC <- c(reg1=extractAIC(reg1, k=log(nrow(train)))[2],
-         reg2=extractAIC(reg2, k=log(nrow(train)))[2])
+         reg2=extractAIC(reg2, k=log(nrow(train)))[2],
+         reg.BIC=extractAIC(reg.BIC, k=log(nrow(train)))[2])
 BIC
 
 # Apply the formula e^((-1/2)*BIC) to each element of the array. 
