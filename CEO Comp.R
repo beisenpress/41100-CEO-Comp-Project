@@ -85,6 +85,74 @@ combined4$dltt_ev <- combined4$dltt / combined4$ev
 combined4$pstk_ev <- combined4$pstk / combined4$ev
 combined4$che_ev <- combined4$che / combined4$ev
 
+################# Select Industry ##################################
+
+# First pass, look at the first 2 digits of NAICS codes as separate industries
+combined4$Industry_Code1 <- factor(substr(combined4$NAICS,0,2))
+plot(combined4$Industry_Code1,log(combined4$TDC1),main="Log of TDC by Industry Code",xlab="Industry Code",ylab="Log of TDC1")
+# Seems to be additional consolidation that can be performed
+Industry_Dummy_Reg1 <- lm(log(TDC1) ~ Industry_Code1, data = combined4)
+summary(Industry_Dummy_Reg1)
+
+# Second Pass, use the first digit of NAICS codes as separate industries with goal to maintain spread
+combined4$Industry_Code2 <- factor(substr(combined4$NAICS,0,1))
+plot(combined4$Industry_Code2,log(combined4$TDC1))
+# This technique works for some -- 1, 2, 4, 7, 8, 9 -- does not work well for 3, 5, or 6
+Industry_Dummy_Reg2 <- lm(log(TDC1) ~ Industry_Code2, data = combined4)
+
+# Third Pass, Check results 1 - 3 for common sense industry groupings
+# Group 1: 11, 21, 22, 56 -- Agriculture, Hunting, Mining, Oil Extraction, Utilities, Waste Management
+# Group 2: 23, 31, 32, 33, 42, 44, 45, 48, 49 -- Construction, Manufacturing, Trade, and Logistics
+# Group 3: 51, 54, 55 -- Information and Professional Services
+# Group 4: 52, 53 -- Finance, Insurance, Real Estate
+# Group 4: 61, 62, 71, 81, 92 -- Public Services, Art and Entertainment
+# Group 5: 99 -- Unclassified
+combined4$Industry_Code3 <- factor(substr(combined4$NAICS,0,2))
+levels(combined4$Industry_Code3) <- list("Outdoor Services" = c("11","21","22","56"), 
+                                        "Supply Chain" = c("23","31","32","33","42","44","45","48","49"),
+                                        "Information Services" = c("51","54","55"),
+                                        "Financial Services" = c("52","53"),
+                                        "Public Services" = c("61","62","71","72","81","92"),
+                                        "Other" = c("99"))
+plot(combined4$Industry_Code3,log(combined4$TDC1))
+Industry_Dummy_Reg3 <- lm(log(TDC1) ~ Industry_Code3, data = combined4)
+summary(Industry_Dummy_Reg3)
+# Other than unclassified, these groupings appear to be the same
+by(log(combined4$TDC1),combined4$Industry_Code3,function(x)mean(x))
+by(log(combined4$TDC1),combined4$Industry_Code3,function(x)sd(x))
+
+# Final Pass, run regression on NAICS codes, and create dummy variables for anything statistically different than an average industry
+combined4$Industry_Code4 <- factor(substr(combined4$NAICS,0,2))
+# Need to change the reference value to a standard value -- use 52
+combined4 <- within(combined4, Industry_Code4 <- relevel(Industry_Code4, ref="52"))
+Industry_Dummy_Reg4 <- lm(log(TDC1) ~ Industry_Code4, data = combined4)
+summary(Industry_Dummy_Reg4)
+# Industry Code 21, 31, 32, and 61 are statistically significant when compared to Industry Code 52 -- Average, tight spread, no outliers
+levels(combined4$Industry_Code4) <- list("21" = "21",
+                                        "31" = "31",
+                                        "32" = "32",
+                                        "61" = "61",
+                                        "Standard" = c("11","22","23","33","42","44","48","45","49","51","52","53","54","55","62","71","81","92","99"))
+combined4 <- within(combined4,Industry_Code4 <- relevel(Industry_Code4, ref="Standard"))
+plot(combined4$Industry_Code4,log(combined4$TDC1))
+Industry_Dummy_Reg4 <- lm(log(TDC1) ~ Industry_Code4, data = combined4)
+summary(Industry_Dummy_Reg4)
+
+
+BIC <- c(All_Dummy=extractAIC(Industry_Dummy_Reg1,k=log(nrow(combined4))),
+         First_Digit=extractAIC(Industry_Dummy_Reg2,k=log(nrow(combined4))),
+         Manual_Groups=extractAIC(Industry_Dummy_Reg3,k=log(nrow(combined4))),
+         Selected_Dummy=extractAIC(Industry_Dummy_Reg4,k=log(nrow(combined4)))
+         )
+
+BIC
+
+# When comparing BIC, we see that having a standard industry and using a dummy for industries that are statistically different has the lowest BIC of the four ways we treated industry
+# The two lowest models were ones with consolidated groupings of industries. This seems to suggest that individual industries do not have substantial predictive value on pay
+# The regressions were penalized greatly for increasing the complexity -- especially with the first regression using a dummy for all industries
+# Going forward our project will account for industry by using the Selected Industry factor (Industry_Code5) and allowing for interaction with other variables
+
+
 ############## Split data into training and test ###################
 # Set seed so the results are replicable 
 set.seed(9)
