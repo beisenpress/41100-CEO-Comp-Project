@@ -78,6 +78,22 @@ combined4$TDC1_Calc <- rowSums(cbind(combined4$SALARY, combined4$BONUS, combined
                                      combined4$STOCK_AWARDS_FV, combined4$OPTION_AWARDS_FV, 
                                      combined4$DEFER_RPT_AS_COMP_TOT, combined4$OTHCOMP), 
                                na.rm=TRUE)
+
+# Calculate financial ratios.
+combined4$croa <- combined4$oancf / combined4$at
+combined4$dpr <- combined4$dvc / combined4$ni
+combined4$gmargin <- (combined4$revt - combined4$cogs) / combined4$revt
+combined4$pe <- combined4$mv / combined4$revt
+combined4$margin <- combined4$ni / combined4$revt
+combined4$roa <- combined4$ni / combined4$at
+combined4$roe <- combined4$ni / combined4$seq
+combined4$aturn <- combined4$revt / combined4$at
+combined4$invturn <- combined4$sale / combined4$invt
+combined4$dr <- combined4$dt / combined4$at
+combined4$der <- combined4$dt / combined4$seq
+combined4$atr <- (combined4$che + combined4$artfs) / combined4$lct
+combined4$ic <- combined4$ebit / combined4$xint
+
 # Fill in missing with zeros
 combined4$dlc[is.na(combined4$dlc)] <- 0
 combined4$dltt[is.na(combined4$dltt)] <- 0
@@ -184,30 +200,30 @@ plot(log(train$che),log(train$TDC1),pch=20,xlab = "Log of Cash", ylab = "Log of 
 
 
 # Regress log total compensation on log market value
-reg1 <- lm(log(TDC1) ~ log(mv) , data = train)
-summary(reg1)
+ev.reg1 <- lm(log(TDC1) ~ log(mv) , data = train)
+summary(ev.reg1)
 par(mfrow=c(1,1))
 plot(log(train$mv),log(train$TDC1),pch=20,xlab = "Log of Market Value", ylab = "Log of TDC1", main = "Market Value")
-abline(reg1)
+abline(ev.reg1)
 
 # Can argue market value is more important than makret value because shareholders
 # serve as the check on executive compensation, and shareholders care about MV.
 
 # Show diagnosic plots
 par(mfrow=c(1,3))
-plot(reg1$fitted.values,rstudent(reg1), pch=20, main = "Fitted Values and Studentized Residuals")
-hist(rstudent(reg1))
-qqnorm(rstudent(reg1))
+plot(ev.reg1$fitted.values,rstudent(ev.reg1), pch=20, main = "Fitted Values and Studentized Residuals")
+hist(rstudent(ev.reg1))
+qqnorm(rstudent(ev.reg1))
 abline(a=0,b=1)
 
 # Examine companies with very low studentized residuals
 
 # Create dataset of relevent variables
-reg1.diagnositcs <- train[which(!is.na(train$mv)),]
-reg1.diagnositcs$fitted.values <- reg1$fitted.values
-reg1.diagnositcs$residuals <- reg1$residuals
-reg1.diagnositcs$stresiduals <- rstudent(reg1)
-write.csv(reg1.diagnositcs[which(reg1.diagnositcs$stresiduals < -4),c("EXEC_FULLNAME", "CONAME", "TDC1", "mv","stresiduals")], file = "Regression Diagnostics - Underpaid CEOs.csv")
+ev.reg1.diagnositcs <- train[which(!is.na(train$mv)),]
+ev.reg1.diagnositcs$fitted.values <- ev.reg1$fitted.values
+ev.reg1.diagnositcs$residuals <- ev.reg1$residuals
+ev.reg1.diagnositcs$stresiduals <- rstudent(ev.reg1)
+write.csv(ev.reg1.diagnositcs[which(ev.reg1.diagnositcs$stresiduals < -4),c("EXEC_FULLNAME", "CONAME", "TDC1", "mv","stresiduals")], file = "Regression Diagnostics - Underpaid CEOs.csv")
 
 # All of the large residuals are negative - i.e. CEOs making way less than we predict.
 # Two of the largest (using this trianing sample) are Steve Balmer of Microsoft and
@@ -215,59 +231,59 @@ write.csv(reg1.diagnositcs[which(reg1.diagnositcs$stresiduals < -4),c("EXEC_FULL
 # choose to accept a lower salary.
 
 # Regress log total compensation on log market value and all other EV variables
-reg2 <- lm(log(TDC1) ~ log(mv) + dlc + dltt + pstk + che, data = train)
-summary(reg2)
+ev.reg2 <- lm(log(TDC1) ~ log(mv) + dlc + dltt + pstk + che, data = train)
+summary(ev.reg2)
 
 # Show diagnosic plots
 par(mfrow=c(1,3))
-plot(reg2$fitted.values,rstudent(reg2), pch=20, main = "Fitted Values and Studentized Residuals")
-hist(rstudent(reg2))
-qqnorm(rstudent(reg2))
+plot(ev.reg2$fitted.values,rstudent(ev.reg2), pch=20, main = "Fitted Values and Studentized Residuals")
+hist(rstudent(ev.reg2))
+qqnorm(rstudent(ev.reg2))
 abline(a=0,b=1)
 
 # Create dataset of relevent variables
-reg2.AIC <- step(reg1, scope=formula(reg2), direction="forward", k=2)
-reg2.BIC <- step(reg1, scope=formula(reg2), direction="forward", k=log(nrow(train)))
-summary(reg2.BIC)
+ev.reg2.AIC <- step(ev.reg1, scope=formula(ev.reg2), direction="forward", k=2)
+ev.reg2.BIC <- step(ev.reg1, scope=formula(ev.reg2), direction="forward", k=log(nrow(train)))
+summary(ev.reg2.BIC)
 
 # Both AIC and BIC choose to add long term debt dltt
 
 # Regress log total compensation on log market value, enterprise value variables, and industry code.
-reg3 <- lm(log(TDC1) ~ log(mv) + dlc + dltt + pstk + che + Industry_Code4, data = train)
-summary(reg3)
+ev.reg3 <- lm(log(TDC1) ~ log(mv) + dlc + dltt + pstk + che + Industry_Code4, data = train)
+summary(ev.reg3)
 
 # Show diagnosic plots
 par(mfrow=c(1,3))
-plot(reg3$fitted.values,rstudent(reg3), pch=20, main = "Fitted Values and Studentized Residuals")
-hist(rstudent(reg3))
-qqnorm(rstudent(reg3))
+plot(ev.reg3$fitted.values,rstudent(ev.reg3), pch=20, main = "Fitted Values and Studentized Residuals")
+hist(rstudent(ev.reg3))
+qqnorm(rstudent(ev.reg3))
 abline(a=0,b=1)
 
 # Create dataset of relevent variables
-reg3.AIC <- step(reg1, scope=formula(reg3), direction="forward", k=2)
-reg3.BIC <- step(reg1, scope=formula(reg3), direction="forward", k=log(nrow(train)))
-summary(reg3.AIC)
+ev.reg3.AIC <- step(ev.reg1, scope=formula(ev.reg3), direction="forward", k=2)
+ev.reg3.BIC <- step(ev.reg1, scope=formula(ev.reg3), direction="forward", k=log(nrow(train)))
+summary(ev.reg3.AIC)
 
 # Regress log total compensation on log market value, long term debt, industry code, and interactions
-reg4 <- lm(log(TDC1) ~ log(mv) + dltt + Industry_Code4 + log(mv)*Industry_Code4 + dltt*Industry_Code4, data = train)
-summary(reg4)
+ev.reg4 <- lm(log(TDC1) ~ log(mv) + dltt + Industry_Code4 + log(mv)*Industry_Code4 + dltt*Industry_Code4, data = train)
+summary(ev.reg4)
 
 # Show diagnosic plots
 par(mfrow=c(1,3))
-plot(reg4$fitted.values,rstudent(reg4), pch=20, main = "Fitted Values and Studentized Residuals")
-hist(rstudent(reg4))
-qqnorm(rstudent(reg4))
+plot(ev.reg4$fitted.values,rstudent(ev.reg4), pch=20, main = "Fitted Values and Studentized Residuals")
+hist(rstudent(ev.reg4))
+qqnorm(rstudent(ev.reg4))
 abline(a=0,b=1)
 
 # Create dataset of relevent variables
-reg3.AIC <- step(reg1, scope=formula(reg3), direction="forward", k=2)
-reg3.BIC <- step(reg1, scope=formula(reg3), direction="forward", k=log(nrow(train)))
-summary(reg3.AIC)
+ev.reg4.AIC <- step(ev.reg1, scope=formula(ev.reg4), direction="forward", k=2)
+ev.reg4.BIC <- step(ev.reg1, scope=formula(ev.reg4), direction="forward", k=log(nrow(train)))
+summary(ev.reg3.AIC)
 
 # Compare the two regressions on EV using BIC.
-BIC <- c(reg1=extractAIC(reg1, k=log(nrow(train)))[2],
-         reg2=extractAIC(reg2, k=log(nrow(train)))[2],
-         reg.BIC=extractAIC(reg.BIC, k=log(nrow(train)))[2])
+BIC <- c(ev.reg1=extractAIC(ev.reg1, k=log(nrow(train)))[2],
+         ev.reg2=extractAIC(ev.reg2, k=log(nrow(train)))[2],
+         ev.reg2.BIC=extractAIC(ev.reg2.BIC, k=log(nrow(train)))[2])
 BIC
 
 # Apply the formula e^((-1/2)*BIC) to each element of the array. 
@@ -276,3 +292,22 @@ eBIC <- exp(-0.5*(BIC-min(BIC)))
 # Calculate the probabliliy by dividing each eBIC by the sum of all eBIC values
 probs <- eBIC/sum(eBIC)
 round(probs, 5)
+
+############################# Financial Variable regressions #############################
+
+#Select columns for analysis
+trainclean <- train[c("TDC1","bkvlps","croa","dpr","epsfx","gmargin","roa","roe","aturn","dr","der","atr","wcap", 
+                      "mv", "ev", "fincf", "ivncf", "oancf", "at", "lt", "seq", "revt", "xopr", "ebitda", "Industry_Code4")]
+
+#"invturn","ic","pe","margin","naics" need to solve for inf issue
+
+#remove all NAs and INF and replace with 0s
+trainclean[is.na(trainclean)] <- 0
+
+#Forward stepwise BIC
+
+fv.base <- lm(log(TDC1) ~ 1, data=trainclean)
+fv.full <- lm(log(TDC1) ~ ., data=trainclean)
+
+ev.reg.AIC <- step(fv.base, scope=formula(fv.full), direction="forward", k=2)
+ev.reg.BIC <- step(fv.base, scope=formula(fv.full), direction="forward", k=log(nrow(trainclean)))
