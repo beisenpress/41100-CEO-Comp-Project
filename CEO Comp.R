@@ -207,7 +207,7 @@ reg1.diagnositcs <- train[which(!is.na(train$mv)),]
 reg1.diagnositcs$fitted.values <- reg1$fitted.values
 reg1.diagnositcs$residuals <- reg1$residuals
 reg1.diagnositcs$stresiduals <- rstudent(reg1)
-write.csv(reg1.diagnositcs[which(reg1.diagnositcs$stresiduals < -4),c("EXEC_FULLNAME", "CONAME", "TDC1", "mv","stresiduals")], file = "reg1.diagnostics")
+write.csv(reg1.diagnositcs[which(reg1.diagnositcs$stresiduals < -4),c("EXEC_FULLNAME", "CONAME", "TDC1", "mv","stresiduals")], file = "Regression Diagnostics - Underpaid CEOs.csv")
 
 # All of the large residuals are negative - i.e. CEOs making way less than we predict.
 # Two of the largest (using this trianing sample) are Steve Balmer of Microsoft and
@@ -234,7 +234,7 @@ summary(reg2.BIC)
 
 # Regress log total compensation on log market value. 
 #Also control composition of EV
-reg3 <- lm(log(TDC1) ~ log(mv) + dlc + dltt + che, data = train)
+reg2 <- lm(log(TDC1) ~ log(mv) + dlc + dltt + pstk + che + Industry_Code4, data = train)
 summary(reg3)
 
 # Show diagnosic plots
