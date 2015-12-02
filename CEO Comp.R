@@ -78,6 +78,11 @@ combined4$TDC1_Calc <- rowSums(cbind(combined4$SALARY, combined4$BONUS, combined
                                      combined4$STOCK_AWARDS_FV, combined4$OPTION_AWARDS_FV, 
                                      combined4$DEFER_RPT_AS_COMP_TOT, combined4$OTHCOMP), 
                                na.rm=TRUE)
+# Fill in missing with zeros
+combined4$dlc[is.na(combined4$dlc)] <- 0
+combined4$dltt[is.na(combined4$dltt)] <- 0
+combined4$pstk[is.na(combined4$pstk)] <- 0
+combined4$che[is.na(combined4$che)] <- 0
 
 # Calculate the components of ev as a percent of ev.
 combined4$dlc_ev <- combined4$dlc / combined4$ev
