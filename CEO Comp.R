@@ -138,7 +138,7 @@ levels(combined4$Industry_Code4) <- list("21" = "21",
                                          "31" = "31",
                                          "32" = "32",
                                          "61" = "61",
-                                         "Standard" = c("11","22","23","33","42","44","48","45","49","51","52","53","54","55","62","71","81","92","99"))
+                                         "Standard" = c("11","22","23","33","42","44","48","45","49","51","52","53","54","55","56","62","71","72","81","92","99"))
 combined4 <- within(combined4,Industry_Code4 <- relevel(Industry_Code4, ref="Standard"))
 plot(combined4$Industry_Code4,log(combined4$TDC1))
 Industry_Dummy_Reg4 <- lm(log(TDC1) ~ Industry_Code4, data = combined4)
@@ -214,8 +214,7 @@ write.csv(reg1.diagnositcs[which(reg1.diagnositcs$stresiduals < -4),c("EXEC_FULL
 # Warren Buffett of Berkshire Hathaway.  It is hard to predict for CEOs that simply 
 # choose to accept a lower salary.
 
-# Regress log total compensation on log market value. 
-#Also control composition of EV
+# Regress log total compensation on log market value and all other EV variables
 reg2 <- lm(log(TDC1) ~ log(mv) + dlc + dltt + pstk + che, data = train)
 summary(reg2)
 
@@ -231,10 +230,10 @@ reg2.AIC <- step(reg1, scope=formula(reg2), direction="forward", k=2)
 reg2.BIC <- step(reg1, scope=formula(reg2), direction="forward", k=log(nrow(train)))
 summary(reg2.BIC)
 
+# Both AIC and BIC choose to add long term debt dltt
 
-# Regress log total compensation on log market value. 
-#Also control composition of EV
-reg2 <- lm(log(TDC1) ~ log(mv) + dlc + dltt + pstk + che + Industry_Code4, data = train)
+# Regress log total compensation on log market value, enterprise value variables, and industry code.
+reg3 <- lm(log(TDC1) ~ log(mv) + dlc + dltt + pstk + che + Industry_Code4, data = train)
 summary(reg3)
 
 # Show diagnosic plots
@@ -249,6 +248,21 @@ reg3.AIC <- step(reg1, scope=formula(reg3), direction="forward", k=2)
 reg3.BIC <- step(reg1, scope=formula(reg3), direction="forward", k=log(nrow(train)))
 summary(reg3.AIC)
 
+# Regress log total compensation on log market value, long term debt, industry code, and interactions
+reg4 <- lm(log(TDC1) ~ log(mv) + dltt + Industry_Code4 + log(mv)*Industry_Code4 + dltt*Industry_Code4, data = train)
+summary(reg4)
+
+# Show diagnosic plots
+par(mfrow=c(1,3))
+plot(reg4$fitted.values,rstudent(reg4), pch=20, main = "Fitted Values and Studentized Residuals")
+hist(rstudent(reg4))
+qqnorm(rstudent(reg4))
+abline(a=0,b=1)
+
+# Create dataset of relevent variables
+reg3.AIC <- step(reg1, scope=formula(reg3), direction="forward", k=2)
+reg3.BIC <- step(reg1, scope=formula(reg3), direction="forward", k=log(nrow(train)))
+summary(reg3.AIC)
 
 # Compare the two regressions on EV using BIC.
 BIC <- c(reg1=extractAIC(reg1, k=log(nrow(train)))[2],
