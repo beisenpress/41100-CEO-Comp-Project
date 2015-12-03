@@ -100,11 +100,14 @@ combined4$dltt[is.na(combined4$dltt)] <- 0
 combined4$pstk[is.na(combined4$pstk)] <- 0
 combined4$che[is.na(combined4$che)] <- 0
 
+# Add a Flag for pstk
+combined4$pstk_flag <- combined4$pstk > 0
+
 # Calculate the components of ev as a percent of ev.
-combined4$dlc_ev <- combined4$dlc / combined4$ev
-combined4$dltt_ev <- combined4$dltt / combined4$ev
-combined4$pstk_ev <- combined4$pstk / combined4$ev
-combined4$che_ev <- combined4$che / combined4$ev
+combined4$dlc_cr <- combined4$dlc^(1/3)
+combined4$dltt_cr <- combined4$dltt^(1/3)
+combined4$pstk_cr <- combined4$pstk^(1/3)
+combined4$che_cr <- combined4$che^(1/3)
 
 ################# Select Industry ##################################
 
@@ -185,16 +188,17 @@ samples <- sort(sample.int(nrow(combined4), 0.80*nrow(combined4)))
 train <- combined4[samples,] 
 test <- combined4[-samples,]
 
+
 ##################### Enterprise Value Regressions  #################################
 
 # Plot TDC1 against all financial variables Logged
 # Plots will be missing points where there are missing values, but thats OK for now
 par(mfrow=c(1,3))
 plot(log(train$mv),log(train$TDC1),pch=20,xlab = "Log of Market Value", ylab = "Log of TDC1", main = "Market Value")
-plot(log(train$dlc),log(train$TDC1),pch=20,xlab = "Log of Debt in Current Liabilities", ylab = "Log of TDC1", main = "Short-term Debt")
-plot(log(train$dltt),log(train$TDC1),pch=20,xlab = "Log of Long Term Debt", ylab = "Log of TDC1", main = "Long Term Debt")
-plot(log(train$pstk),log(train$TDC1),pch=20,xlab = "Log of Preferred Stock", ylab = "Log of TDC1", main = "Preferred Stock")
-plot(log(train$che),log(train$TDC1),pch=20,xlab = "Log of Cash", ylab = "Log of TDC1", main = "Cash")
+plot((train$dlc)^(1/3),log(train$TDC1),pch=20,xlab = "Cube Root of Debt in Current Liabilities", ylab = "Log of TDC1", main = "Short-term Debt")
+plot((train$dltt)^(1/3),log(train$TDC1),pch=20,xlab = "Cube Root of Long Term Debt", ylab = "Log of TDC1", main = "Long Term Debt")
+plot((train$pstk)^(1/3),log(train$TDC1),pch=20,xlab = "Cube Root of Preferred Stock", ylab = "Log of TDC1", main = "Preferred Stock")
+plot((train$che)^(1/3),log(train$TDC1),pch=20,xlab = "Cube Root of Cash", ylab = "Log of TDC1", main = "Cash")
 
 # Market value has the best relationship, followed by Long term debt.
 
@@ -231,7 +235,7 @@ write.csv(ev.reg1.diagnositcs[which(ev.reg1.diagnositcs$stresiduals < -4),c("EXE
 # choose to accept a lower salary.
 
 # Regress log total compensation on log market value and all other EV variables
-ev.reg2 <- lm(log(TDC1) ~ log(mv) + dlc + dltt + pstk + che, data = train)
+ev.reg2 <- lm(log(TDC1) ~ log(mv) + dlc_cr + dltt_cr + pstk_cr + che_cr, data = train)
 summary(ev.reg2)
 
 # Show diagnosic plots
@@ -249,7 +253,7 @@ summary(ev.reg2.BIC)
 # Both AIC and BIC choose to add long term debt dltt
 
 # Regress log total compensation on log market value, enterprise value variables, and industry code.
-ev.reg3 <- lm(log(TDC1) ~ log(mv) + dlc + dltt + pstk + che + Industry_Code4, data = train)
+ev.reg3 <- lm(log(TDC1) ~ log(mv) + dlc_cr + dltt_cr + pstk_cr + che_cr + Industry_Code4, data = train)
 summary(ev.reg3)
 
 # Show diagnosic plots
