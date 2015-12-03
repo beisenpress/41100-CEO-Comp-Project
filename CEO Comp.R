@@ -100,8 +100,6 @@ combined4$dltt[is.na(combined4$dltt)] <- 0
 combined4$pstk[is.na(combined4$pstk)] <- 0
 combined4$che[is.na(combined4$che)] <- 0
 
-# Add a Flag for pstk
-combined4$pstk_flag <- combined4$pstk > 0
 
 # Calculate the components of ev as a percent of ev.
 combined4$dlc_cr <- combined4$dlc^(1/3)
