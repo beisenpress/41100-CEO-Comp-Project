@@ -67,6 +67,7 @@ combined2 <- combined1[which(combined1$EXCHANGE %in% c("NYS","ASE","NAS")),]
 # Remove CEOs that are paid $1 or less.  Observations are not part of what we want to predict.
 combined3 <- combined2[which(combined2$TDC1 > 0.001),]
 
+# Put removed CEOs into a dataset
 removedCEOs <- combined2[which(combined2$TDC1 <= 0.001),]
 
 ############# Additinal Variables ############
@@ -94,14 +95,13 @@ combined4$der <- combined4$dt / combined4$seq
 combined4$atr <- (combined4$che + combined4$artfs) / combined4$lct
 combined4$ic <- combined4$ebit / combined4$xint
 
-# Fill in missing with zeros
+# Fill in missing enterprise value variables with zeros
 combined4$dlc[is.na(combined4$dlc)] <- 0
 combined4$dltt[is.na(combined4$dltt)] <- 0
 combined4$pstk[is.na(combined4$pstk)] <- 0
 combined4$che[is.na(combined4$che)] <- 0
 
-
-# Calculate the components of ev as a percent of ev.
+# Create new variables for the cube root of enterprise value variables
 combined4$dlc_cr <- combined4$dlc^(1/3)
 combined4$dltt_cr <- combined4$dltt^(1/3)
 combined4$pstk_cr <- combined4$pstk^(1/3)
@@ -189,14 +189,14 @@ test <- combined4[-samples,]
 
 ##################### Enterprise Value Regressions  #################################
 
-# Plot TDC1 against all financial variables Logged
-# Plots will be missing points where there are missing values, but thats OK for now
+# Plot TDC1 against all financial variables
+# Use Log for market value and cube root for other variables
 par(mfrow=c(1,3))
 plot(log(train$mv),log(train$TDC1),pch=20,xlab = "Log of Market Value", ylab = "Log of TDC1", main = "Market Value")
-plot((train$dlc)^(1/3),log(train$TDC1),pch=20,xlab = "Cube Root of Debt in Current Liabilities", ylab = "Log of TDC1", main = "Short-term Debt")
-plot((train$dltt)^(1/3),log(train$TDC1),pch=20,xlab = "Cube Root of Long Term Debt", ylab = "Log of TDC1", main = "Long Term Debt")
-plot((train$pstk)^(1/3),log(train$TDC1),pch=20,xlab = "Cube Root of Preferred Stock", ylab = "Log of TDC1", main = "Preferred Stock")
-plot((train$che)^(1/3),log(train$TDC1),pch=20,xlab = "Cube Root of Cash", ylab = "Log of TDC1", main = "Cash")
+plot(train$dlc_cr,log(train$TDC1),pch=20,xlab = "Cube Root of Debt in Current Liabilities", ylab = "Log of TDC1", main = "Short-term Debt")
+plot(train$dltt_cr,log(train$TDC1),pch=20,xlab = "Cube Root of Long Term Debt", ylab = "Log of TDC1", main = "Long Term Debt")
+plot(train$pstk_cr,log(train$TDC1),pch=20,xlab = "Cube Root of Preferred Stock", ylab = "Log of TDC1", main = "Preferred Stock")
+plot(train$che_cr,log(train$TDC1),pch=20,xlab = "Cube Root of Cash", ylab = "Log of TDC1", main = "Cash")
 
 # Market value has the best relationship, followed by Long term debt.
 
@@ -232,7 +232,7 @@ write.csv(ev.reg1.diagnositcs[which(ev.reg1.diagnositcs$stresiduals < -4),c("EXE
 # Warren Buffett of Berkshire Hathaway.  It is hard to predict for CEOs that simply 
 # choose to accept a lower salary.
 
-# Regress log total compensation on log market value and all other EV variables
+# Regress log total compensation on log market value and cube root of all other EV variables
 ev.reg2 <- lm(log(TDC1) ~ log(mv) + dlc_cr + dltt_cr + pstk_cr + che_cr, data = train)
 summary(ev.reg2)
 
@@ -248,9 +248,10 @@ ev.reg2.AIC <- step(ev.reg1, scope=formula(ev.reg2), direction="forward", k=2)
 ev.reg2.BIC <- step(ev.reg1, scope=formula(ev.reg2), direction="forward", k=log(nrow(train)))
 summary(ev.reg2.BIC)
 
-# Both AIC and BIC choose to add long term debt dltt
+# Both AIC and BIC choose to add Long Term Debt (dltt) and Preferred Stock (pstk)
+# AIC also adds Short Term Debt (dlc)
 
-# Regress log total compensation on log market value, enterprise value variables, and industry code.
+# Add the industry classification to the regression
 ev.reg3 <- lm(log(TDC1) ~ log(mv) + dlc_cr + dltt_cr + pstk_cr + che_cr + Industry_Code4, data = train)
 summary(ev.reg3)
 
@@ -261,26 +262,12 @@ hist(rstudent(ev.reg3))
 qqnorm(rstudent(ev.reg3))
 abline(a=0,b=1)
 
-# Create dataset of relevent variables
+# Re-do AIC and BIC with industry classification in the full model
 ev.reg3.AIC <- step(ev.reg1, scope=formula(ev.reg3), direction="forward", k=2)
 ev.reg3.BIC <- step(ev.reg1, scope=formula(ev.reg3), direction="forward", k=log(nrow(train)))
 summary(ev.reg3.AIC)
 
-# Regress log total compensation on log market value, long term debt, industry code, and interactions
-ev.reg4 <- lm(log(TDC1) ~ log(mv) + dltt + Industry_Code4 + log(mv)*Industry_Code4 + dltt*Industry_Code4, data = train)
-summary(ev.reg4)
-
-# Show diagnosic plots
-par(mfrow=c(1,3))
-plot(ev.reg4$fitted.values,rstudent(ev.reg4), pch=20, main = "Fitted Values and Studentized Residuals")
-hist(rstudent(ev.reg4))
-qqnorm(rstudent(ev.reg4))
-abline(a=0,b=1)
-
-# Create dataset of relevent variables
-ev.reg4.AIC <- step(ev.reg1, scope=formula(ev.reg4), direction="forward", k=2)
-ev.reg4.BIC <- step(ev.reg1, scope=formula(ev.reg4), direction="forward", k=log(nrow(train)))
-summary(ev.reg3.AIC)
+# Neither AIC nor BIC adds industry classification
 
 # Compare the two regressions on EV using BIC.
 BIC <- c(ev.reg1=extractAIC(ev.reg1, k=log(nrow(train)))[2],
