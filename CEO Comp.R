@@ -33,9 +33,9 @@ any(duplicated(ceo.comp$GVKEY))
 
 ############ Select type of financial data used #########
 # COMPUSTAT has a variable Industry Format (INDFMT.) 
-# From compustat, it “describes the general industry presentation for the associated 
+# From compustat, it "describes the general industry presentation for the associated 
 # data record. This allows you to view a company (such as Aetna) as an industrial company or 
-# as a financial services company.”
+# as a financial services company."
 # To avoid duplicates we are going to select the industiral companies.
 financials2 <- Financials[which(Financials$indfmt == "INDL"),]
 
@@ -296,18 +296,65 @@ round(probs, 5)
 ############################# Financial Variable regressions #############################
 
 #Select columns for analysis
-trainclean <- train[c("TDC1","bkvlps","croa","dpr","epsfx","gmargin","roa","roe","aturn","dr","der","atr","wcap", 
-                      "mv", "ev", "fincf", "ivncf", "oancf", "at", "lt", "seq", "revt", "xopr", "ebitda", "Industry_Code4")]
+trainclean <- train[c("TDC1","bkvlps","croa","dpr","epsfx","gmargin","roa","roe","aturn","dr","der", "wcap")]
 
-#"invturn","ic","pe","margin","naics" need to solve for inf issue
+#"atr", "invturn","ic","pe","margin","naics" need to solve for inf issue
+#"mv", "ev", "fincf", "ivncf", "oancf", "at", "lt", "seq", "revt", "xopr", "ebitda", "Industry_Code4"
 
 #remove all NAs and INF and replace with 0s
 trainclean[is.na(trainclean)] <- 0
 
+
+trainclean <-trainclean[which(trainclean$bkvlps < 200),]
+trainclean <-trainclean[which(trainclean$dpr > 0),]
+trainclean <-trainclean[which(trainclean$dpr < 100),]
+trainclean <-trainclean[which(trainclean$der > -100),]
+trainclean <-trainclean[which(trainclean$der < 100),]
+
+
+#this kills a lot of varialbes. not sure if we actually want to use the log of these?
+trainclean <-trainclean[which(trainclean$roe > 0),] 
+trainclean <-trainclean[which(trainclean$der > 0),] #this is ok, shouldn't have negative debt.
+trainclean <-trainclean[which(trainclean$wcap > 0),]
+
+# Plot TDC1 against all financial variables Logged
+# Plots will be missing points where there are missing values, but thats OK for now
+par(mfrow=c(1,3))
+
+plot(trainclean$bkvlps,log(trainclean$TDC1),pch=20,xlab = "Book Value per Share", ylab = "Log of TDC1")
+plot(trainclean$croa,log(trainclean$TDC1),pch=20,xlab = "Cash Return on Total Assets", ylab = "Log of TDC1")
+plot(trainclean$dpr,log(trainclean$TDC1),pch=20,xlab = "Dividend Payout Ratio", ylab = "Log of TDC1")
+
+plot(trainclean$epsfx,log(trainclean$TDC1),pch=20,xlab = "EPS", ylab = "Log of TDC1")
+plot(trainclean$gmargin,log(trainclean$TDC1),pch=20,xlab = "Gross Profit Margin", ylab = "Log of TDC1")
+plot(trainclean$roa,log(trainclean$TDC1),pch=20,xlab = "Return on Asset", ylab = "Log of TDC1")
+
+plot(log(trainclean$roe),log(trainclean$TDC1),pch=20,xlab = "Log of Return on Equity", ylab = "Log of TDC1")
+plot(trainclean$aturn,log(trainclean$TDC1),pch=20,xlab = "Asset Turnover", ylab = "Log of TDC1")
+plot(trainclean$dr,log(trainclean$TDC1),pch=20,xlab = "Debt Ratio", ylab = "Log of TDC1")
+
+plot(log(trainclean$der),log(trainclean$TDC1),pch=20,xlab = "Log of Debt to Equity Ratio", ylab = "Log of TDC1")
+plot(log(trainclean$wcap),log(trainclean$TDC1),pch=20,xlab = "Log of Working Capital", ylab = "Log of TDC1")
+
+
+trainclean$logroe = log(trainclean$roe)
+trainclean$logder = log(trainclean$der)
+trainclean$logwcap = log(trainclean$wcap)
+
+
 #Forward stepwise BIC
 
 fv.base <- lm(log(TDC1) ~ 1, data=trainclean)
-fv.full <- lm(log(TDC1) ~ ., data=trainclean)
+fv.full <- lm(log(TDC1) ~ . - wcap - roe - der, data=trainclean)
 
-ev.reg.AIC <- step(fv.base, scope=formula(fv.full), direction="forward", k=2)
-ev.reg.BIC <- step(fv.base, scope=formula(fv.full), direction="forward", k=log(nrow(trainclean)))
+fv.reg.AIC <- step(fv.base, scope=formula(fv.full), direction="forward", k=2)
+fv.reg.BIC <- step(fv.base, scope=formula(fv.full), direction="forward", k=log(nrow(trainclean)))
+
+summary(fv.reg.BIC)
+
+# Show diagnosic plots
+par(mfrow=c(1,3))
+plot(fv.reg.BIC$fitted.values,rstudent(fv.reg.BIC), pch=20, main = "Fitted Values and Studentized Residuals")
+hist(rstudent(fv.reg.BIC))
+qqnorm(rstudent(fv.reg.BIC))
+abline(a=0,b=1)
