@@ -100,11 +100,6 @@ combined4$wcap <- sign(combined4$wcap)*(abs(combined4$wcap)^(1/3))
 
 # Filter our outlier of financial variables. Clean N/As
 combined4[is.na(combined4)] <- 0
-combined4 <-combined4[which(combined4$bkvlps < 200),]
-combined4 <-combined4[which(combined4$dpr >= 0),]
-combined4 <-combined4[which(combined4$dpr < 100),]
-combined4 <-combined4[which(combined4$der < 100),]
-combined4 <-combined4[which(combined4$gmargin > -100),]
 
 # Fill in missing enterprise value variables with zeros
 combined4$dlc[is.na(combined4$dlc)] <- 0
