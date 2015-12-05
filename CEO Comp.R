@@ -421,3 +421,15 @@ abline(h=0)
 hist(rstudent(cf.reg.AICi))
 qqnorm(rstudent(cf.reg.AICi))
 abline(a=0,b=1)
+
+############# Combined Regression ########
+
+# Create null and full models
+comb.reg.null <- lm(log(TDC1) ~ 1, data = train)
+comb.reg.full <- lm(log(TDC1) ~ log(mv) + dltt_cr + dlc_cr +  pstk_cr + che_cr + 
+                Industry_Code4 + bkvlps + croa + dpr + epsfx + gmargin + 
+                roa + roe + aturn + dr + der + wcap +
+                fincf_cr + ivncf_cr + oancf_cr, data = train)
+
+# Run BIC
+comb.reg.BIC <- step(comb.reg.null, scope=formula(comb.reg.full), direction="forward", k=log(nrow(train)))
