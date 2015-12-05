@@ -386,7 +386,7 @@ plot(cf.train$oancf_cr,log(cf.train$TDC1),pch=20,xlab = "Operating Cash Flow Cub
 
 #Variable selection using AIC and BIC without logs
 cf.null <- lm(log(cf.train$TDC1) ~ 1, data=cf.train)
-cf.full <- lm(log(cf.train$TDC1) ~ ., data=cf.train)
+cf.full <- lm(log(cf.train$TDC1) ~ oancf_cr + ivncf_cr + fincf_cr, data=cf.train)
 
 cf.reg.AIC <- step(cf.null, scope=formula(cf.full), direction="forward", k=2)
 cf.reg.BIC <- step(cf.null, scope=formula(cf.full), direction="forward", k=log(nrow(cf.train)))
@@ -402,24 +402,17 @@ BIC <- c(cf.reg.AIC=extractAIC(cf.reg.AIC, k=log(nrow(cf.train)))[2],
 eBIC <- exp(-0.5*(BIC-min(BIC)))
 
 round(probs <- eBIC/sum(eBIC,1),5)
-# AICi is the best model from stepwise forward regression
-
-summary(cf.reg.AICi)
-#lm(formula = log(cf.train$TDC1) ~ oancf_cr + ivncf_cr + fincf_cr + 
-#     oancf + oancf_cr:fincf_cr + oancf_cr:ivncf_cr + ivncf_cr:oancf + 
-#     fincf_cr:oancf + ivncf_cr:fincf_cr, data = cf.train)
+# AIC, BIC, BICi are the same and the best model from stepwise forward regression
 
 summary(cf.reg.BICi)
-#lm(formula = log(cf.train$TDC1) ~ oancf_cr + ivncf_cr + fincf_cr + 
-#     oancf + oancf_cr:fincf_cr + oancf_cr:ivncf_cr + ivncf_cr:oancf + 
-#     fincf_cr:oancf + ivncf_cr:fincf_cr, data = cf.train)
+#lm(formula = log(cf.train$TDC1) ~ oancf_cr + ivncf_cr + fincf_cr, data = cf.train)
 
 # Show diagnostic plots
 par(mfrow=c(1,3))
-plot(cf.reg.AICi$fitted.values,rstudent(cf.reg.AICi), pch=20, main = "Fitted Values and Studentized Residuals")
+plot(cf.reg.BICi$fitted.values,rstudent(cf.reg.BICi), pch=20, main = "Fitted Values and Studentized Residuals")
 abline(h=0)
-hist(rstudent(cf.reg.AICi))
-qqnorm(rstudent(cf.reg.AICi))
+hist(rstudent(cf.reg.BICi))
+qqnorm(rstudent(cf.reg.BICi))
 abline(a=0,b=1)
 
 ############# Combined Regression ########
