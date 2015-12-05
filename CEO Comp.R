@@ -360,10 +360,6 @@ qqnorm(rstudent(fv.reg.BIC))
 
 #Select columns for analysis
 cf.train <- train[c("TDC1","fincf", "ivncf", "oancf")]
-cf.train$fincf_cr <- sign(cf.train$fincf)*(abs(cf.train$fincf)^(1/3))
-cf.train$ivncf_cr <- sign(cf.train$ivncf)*(abs(cf.train$ivncf)^(1/3))
-cf.train$oancf_cr <- sign(cf.train$oancf)*(abs(cf.train$oancf)^(1/3))
-
 
 #Identify how many CEOs have all positive cash flows.  Only 6 out of the 1722 observations have all positive cash flows.
 cf.train.f <- cf.train[which(cf.train$fincf > 0),] #482 out of 1722 variables remain
