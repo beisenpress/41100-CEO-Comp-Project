@@ -8,7 +8,7 @@ combined4b <- combined4b[which(combined4b$GVKEY != 15208),]
 set.seed(9)
 
 # Select a random sample of rows
-samples <- sort(sample.int(nrow(combined4), 0.80*nrow(combined4)))
+samples <- sort(sample.int(nrow(combined4b), 0.80*nrow(combined4b)))
 
 # Subset the data into training and test datasets.
 train <- combined4b[samples,] 
@@ -74,49 +74,3 @@ ev.reg2.AIC <- step(ev.reg1, scope=formula(ev.reg2), direction="forward", k=2)
 ev.reg2.BIC <- step(ev.reg1, scope=formula(ev.reg2), direction="forward", k=log(nrow(train)))
 summary(ev.reg2.BIC)
 
-# Both AIC and BIC choose to add Long Term Debt (dltt) and Preferred Stock (pstk)
-# AIC also adds Short Term Debt (dlc)
-
-# Show diagnosic plots
-par(mfrow=c(1,3))
-plot(ev.reg2.BIC$fitted.values,rstudent(ev.reg2.BIC), pch=20, main = "Fitted Values and Studentized Residuals")
-hist(rstudent(ev.reg2.BIC))
-qqnorm(rstudent(ev.reg2.BIC))
-abline(a=0,b=1)
-
-# Show diagnostic plots by X variable
-par(mfrow=c(1,2))
-plot(ev.reg1.diagnositcs$pstk_cr,rstudent(ev.reg2.BIC), pch=20, main = "Cube root of Preferred Stock")
-plot(ev.reg1.diagnositcs$dltt_cr,rstudent(ev.reg2.BIC), pch=20, main = "Cube root of Long-Term Debt")
-
-
-# Add the industry classification to the regression
-ev.reg3 <- lm(log(TDC1) ~ log(mv) + dlc_cr + dltt_cr + pstk_cr + che_cr + Industry_Code4, data = train)
-summary(ev.reg3)
-
-# Show diagnosic plots
-par(mfrow=c(1,3))
-plot(ev.reg3$fitted.values,rstudent(ev.reg3), pch=20, main = "Fitted Values and Studentized Residuals")
-hist(rstudent(ev.reg3))
-qqnorm(rstudent(ev.reg3))
-abline(a=0,b=1)
-
-# Re-do AIC and BIC with industry classification in the full model
-ev.reg3.AIC <- step(ev.reg1, scope=formula(ev.reg3), direction="forward", k=2)
-ev.reg3.BIC <- step(ev.reg1, scope=formula(ev.reg3), direction="forward", k=log(nrow(train)))
-summary(ev.reg3.BIC)
-
-# Neither AIC nor BIC adds industry classification
-
-# Compare the two regressions on EV using BIC.
-BIC <- c(ev.reg1=extractAIC(ev.reg1, k=log(nrow(train)))[2],
-         ev.reg2=extractAIC(ev.reg2, k=log(nrow(train)))[2],
-         ev.reg2.BIC=extractAIC(ev.reg2.BIC, k=log(nrow(train)))[2])
-BIC
-
-# Apply the formula e^((-1/2)*BIC) to each element of the array. 
-eBIC <- exp(-0.5*(BIC-min(BIC)))
-
-# Calculate the probabliliy by dividing each eBIC by the sum of all eBIC values
-probs <- eBIC/sum(eBIC)
-round(probs, 5)

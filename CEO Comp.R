@@ -235,7 +235,7 @@ abline(a=0,b=1)
 # Examine companies with very low studentized residuals
 
 # Create dataset of relevent variables
-ev.reg1.diagnositcs <- train[which(!is.na(train$mv)),]
+ev.reg1.diagnositcs <- train
 ev.reg1.diagnositcs$fitted.values <- ev.reg1$fitted.values
 ev.reg1.diagnositcs$residuals <- ev.reg1$residuals
 ev.reg1.diagnositcs$stresiduals <- rstudent(ev.reg1)
@@ -268,6 +268,7 @@ summary(ev.reg2.BIC)
 # Do a regression excluding FHFA. (See "FHFA Diagnostics.R")
 # It comes up with this model:
 ev.reg.BIC_FHFA <- lm(log(TDC1) ~ logmv + dltt_cr + dlc_cr, data = train)
+summary(ev.reg.BIC_FHFA)
 
 # Show diagnosic plots
 par(mfrow=c(1,3))
@@ -277,7 +278,8 @@ qqnorm(rstudent(ev.reg.BIC_FHFA))
 abline(a=0,b=1)
 
 # Show diagnostic plots by X variable
-par(mfrow=c(1,2))
+par(mfrow=c(1,3))
+plot(train$logmv,rstudent(ev.reg.BIC_FHFA), pch=20, main = "Log of Market Value")
 plot(train$dltt_cr,rstudent(ev.reg.BIC_FHFA), pch=20, main = "Cube root of Long-Term Debt")
 plot(train$dlc_cr,rstudent(ev.reg.BIC_FHFA), pch=20, main = "Cube root of Short-Term Debt")
 
@@ -303,7 +305,7 @@ summary(ev.reg3.BIC)
 # Compare the two regressions on EV using BIC.
 BIC <- c(ev.reg1=extractAIC(ev.reg1, k=log(nrow(train)))[2],
          ev.reg2=extractAIC(ev.reg2, k=log(nrow(train)))[2],
-         ev.reg2.BIC=extractAIC(ev.reg2.BIC, k=log(nrow(train)))[2])
+         ev.reg.BIC_FHFA=extractAIC(ev.reg.BIC_FHFA, k=log(nrow(train)))[2])
 BIC
 
 # Apply the formula e^((-1/2)*BIC) to each element of the array. 
@@ -428,10 +430,10 @@ train.select <- train[,c("TDC1", "logmv", "dltt_cr", "dlc_cr", "pstk_cr", "che_c
 # Create null and full models
 comb.reg.null <- lm(log(TDC1) ~ 1, data = train.select)
 comb.reg.full <- lm(log(TDC1) ~ . + .^2, data = train.select)
-summary(comb.reg.full)
 
 # Run BIC on combined regression
 comb.reg.BIC <- step(comb.reg.null, scope=formula(comb.reg.full), direction="forward", k=log(nrow(train)))
+summary(comb.reg.BIC)
 
 # Plot diagnostics for combined regression
 par(mfrow=c(1,3))
