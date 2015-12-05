@@ -118,6 +118,9 @@ combined4$fincf_cr <- sign(combined4$fincf)*(abs(combined4$fincf)^(1/3))
 combined4$ivncf_cr <- sign(combined4$ivncf)*(abs(combined4$ivncf)^(1/3))
 combined4$oancf_cr <- sign(combined4$oancf)*(abs(combined4$oancf)^(1/3))
 
+# Add Log of market value
+combined4$logmv <- log(combined4$mv)
+
 ################# Select Industry ##################################
 
 # First pass, look at the first 2 digits of NAICS codes as separate industries
@@ -213,7 +216,7 @@ plot(train$che_cr,log(train$TDC1),pch=20,xlab = "Cube Root of Cash", ylab = "Log
 
 
 # Regress log total compensation on log market value
-ev.reg1 <- lm(log(TDC1) ~ log(mv) , data = train)
+ev.reg1 <- lm(log(TDC1) ~ logmv , data = train)
 summary(ev.reg1)
 par(mfrow=c(1,1))
 plot(log(train$mv),log(train$TDC1),pch=20,xlab = "Log of Market Value", ylab = "Log of TDC1", main = "Market Value")
@@ -244,7 +247,7 @@ write.csv(ev.reg1.diagnositcs[which(ev.reg1.diagnositcs$stresiduals < -4),c("EXE
 # choose to accept a lower salary.
 
 # Regress log total compensation on log market value and cube root of all other EV variables
-ev.reg2 <- lm(log(TDC1) ~ log(mv) + dlc_cr + dltt_cr + pstk_cr + che_cr, data = train)
+ev.reg2 <- lm(log(TDC1) ~ logmv + dlc_cr + dltt_cr + pstk_cr + che_cr, data = train)
 summary(ev.reg2)
 
 # Show diagnosic plots
@@ -264,7 +267,7 @@ summary(ev.reg2.BIC)
 
 # Do a regression excluding FHFA. (See "FHFA Diagnostics.R")
 # It comes up with this model:
-ev.reg.BIC_FHFA <- lm(log(TDC1) ~ log(mv) + dltt_cr + dlc_cr, data = train)
+ev.reg.BIC_FHFA <- lm(log(TDC1) ~ logmv + dltt_cr + dlc_cr, data = train)
 
 # Show diagnosic plots
 par(mfrow=c(1,3))
@@ -280,7 +283,7 @@ plot(train$dlc_cr,rstudent(ev.reg.BIC_FHFA), pch=20, main = "Cube root of Short-
 
 
 # Add the industry classification to the regression
-ev.reg3 <- lm(log(TDC1) ~ log(mv) + dltt_cr + dlc_cr + Industry_Code4, data = train)
+ev.reg3 <- lm(log(TDC1) ~ logmv + dltt_cr + dlc_cr + Industry_Code4, data = train)
 summary(ev.reg3)
 
 # Show diagnosic plots
@@ -416,13 +419,16 @@ qqnorm(rstudent(cf.reg.BICi))
 abline(a=0,b=1)
 
 ############# Combined Regression ########
+train.select <- train[,c("TDC1", "logmv", "dltt_cr", "dlc_cr", "pstk_cr", "che_cr", 
+                           "Industry_Code4", "bkvlps", "croa", "dpr", 
+                           "epsfx", "gmargin","roa", "roe", "aturn", "dr",
+                          "der", "wcap", "fincf_cr", "ivncf_cr", "oancf_cr")]
+
 
 # Create null and full models
-comb.reg.null <- lm(log(TDC1) ~ 1, data = train)
-comb.reg.full <- lm(log(TDC1) ~ log(mv) + dltt_cr + dlc_cr +  pstk_cr + che_cr + 
-                Industry_Code4 + bkvlps + croa + dpr + epsfx + gmargin + 
-                roa + roe + aturn + dr + der + wcap +
-                fincf_cr + ivncf_cr + oancf_cr, data = train)
+comb.reg.null <- lm(log(TDC1) ~ 1, data = train.select)
+comb.reg.full <- lm(log(TDC1) ~ . + .^2, data = train.select)
+summary(comb.reg.full)
 
 # Run BIC
 comb.reg.BIC <- step(comb.reg.null, scope=formula(comb.reg.full), direction="forward", k=log(nrow(train)))
