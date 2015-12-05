@@ -105,7 +105,12 @@ combined4$che[is.na(combined4$che)] <- 0
 combined4$dlc_cr <- sign(combined4$dlc)*(abs(combined4$dlc)^(1/3))
 combined4$dltt_cr <- sign(combined4$dltt)*(abs(combined4$dltt)^(1/3))
 combined4$pstk_cr <- sign(combined4$pstk)*(abs(combined4$pstk)^(1/3))
-combined4$che_cr <- sign(combined4$pstk)*(abs(combined4$pstk)^(1/3))
+combined4$che_cr <- sign(combined4$che)*(abs(combined4$che)^(1/3))
+
+# Create new variables for the cube root of enterprise value variables
+combined4$fincf_cr <- sign(combined4$fincf)*(abs(combined4$fincf)^(1/3))
+combined4$ivncf_cr <- sign(combined4$ivncf)*(abs(combined4$ivncf)^(1/3))
+combined4$oancf_cr <- sign(combined4$oancf)*(abs(combined4$oancf)^(1/3))
 
 ################# Select Industry ##################################
 
@@ -250,6 +255,19 @@ summary(ev.reg2.BIC)
 
 # Both AIC and BIC choose to add Long Term Debt (dltt) and Preferred Stock (pstk)
 # AIC also adds Short Term Debt (dlc)
+
+# Show diagnosic plots
+par(mfrow=c(1,3))
+plot(ev.reg2.BIC$fitted.values,rstudent(ev.reg2.BIC), pch=20, main = "Fitted Values and Studentized Residuals")
+hist(rstudent(ev.reg2.BIC))
+qqnorm(rstudent(ev.reg2.BIC))
+abline(a=0,b=1)
+
+# Show diagnostic plots by X variable
+par(mfrow=c(1,2))
+plot(ev.reg1.diagnositcs$pstk_cr,rstudent(ev.reg2.BIC), pch=20, main = "Cube root of Preferred Stock")
+plot(ev.reg1.diagnositcs$dltt_cr,rstudent(ev.reg2.BIC), pch=20, main = "Cube root of Long-Term Debt")
+
 
 # Add the industry classification to the regression
 ev.reg3 <- lm(log(TDC1) ~ log(mv) + dlc_cr + dltt_cr + pstk_cr + che_cr + Industry_Code4, data = train)
