@@ -100,11 +100,6 @@ combined4$wcap <- sign(combined4$wcap)*(abs(combined4$wcap)^(1/3))
 
 # Filter our outlier of financial variables. Clean N/As
 combined4[is.na(combined4)] <- 0
-combined4 <-combined4[which(combined4$bkvlps < 200),]
-combined4 <-combined4[which(combined4$dpr >= 0),]
-combined4 <-combined4[which(combined4$dpr < 100),]
-combined4 <-combined4[which(combined4$der < 100),]
-combined4 <-combined4[which(combined4$gmargin > -100),]
 
 # Fill in missing enterprise value variables with zeros
 combined4$dlc[is.na(combined4$dlc)] <- 0
@@ -265,23 +260,27 @@ ev.reg2.BIC <- step(ev.reg1, scope=formula(ev.reg2), direction="forward", k=log(
 summary(ev.reg2.BIC)
 
 # Both AIC and BIC choose to add Long Term Debt (dltt) and Preferred Stock (pstk)
-# AIC also adds Short Term Debt (dlc)
+# However, this is only because of FHFA outliers.
+
+# Do a regression excluding FHFA. (See "FHFA Diagnostics.R")
+# It comes up with this model:
+ev.reg.BIC_FHFA <- lm(log(TDC1) ~ log(mv) + dltt_cr + dlc_cr, data = train)
 
 # Show diagnosic plots
 par(mfrow=c(1,3))
-plot(ev.reg2.BIC$fitted.values,rstudent(ev.reg2.BIC), pch=20, main = "Fitted Values and Studentized Residuals")
-hist(rstudent(ev.reg2.BIC))
-qqnorm(rstudent(ev.reg2.BIC))
+plot(ev.reg.BIC_FHFA$fitted.values,rstudent(ev.reg.BIC_FHFA), pch=20, main = "Fitted Values and Studentized Residuals")
+hist(rstudent(ev.reg.BIC_FHFA))
+qqnorm(rstudent(ev.reg.BIC_FHFA))
 abline(a=0,b=1)
 
 # Show diagnostic plots by X variable
 par(mfrow=c(1,2))
-plot(ev.reg1.diagnositcs$pstk_cr,rstudent(ev.reg2.BIC), pch=20, main = "Cube root of Preferred Stock")
-plot(ev.reg1.diagnositcs$dltt_cr,rstudent(ev.reg2.BIC), pch=20, main = "Cube root of Long-Term Debt")
+plot(train$dltt_cr,rstudent(ev.reg.BIC_FHFA), pch=20, main = "Cube root of Long-Term Debt")
+plot(train$dlc_cr,rstudent(ev.reg.BIC_FHFA), pch=20, main = "Cube root of Short-Term Debt")
 
 
 # Add the industry classification to the regression
-ev.reg3 <- lm(log(TDC1) ~ log(mv) + dlc_cr + dltt_cr + pstk_cr + che_cr + Industry_Code4, data = train)
+ev.reg3 <- lm(log(TDC1) ~ log(mv) + dltt_cr + dlc_cr + Industry_Code4, data = train)
 summary(ev.reg3)
 
 # Show diagnosic plots
