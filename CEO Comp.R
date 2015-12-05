@@ -358,7 +358,7 @@ qqnorm(rstudent(fv.reg.BIC))
 ################# Cash Flow Regression ##################################
 
 #Select columns for analysis
-cf.train <- train[c("TDC1","fincf", "ivncf", "oancf")]
+cf.train <- train[c("TDC1","fincf", "ivncf", "oancf", "fincf_cr", "ivncf_cr", "oancf_cr")]
 
 #Identify how many CEOs have all positive cash flows.  Only 6 out of the 1722 observations have all positive cash flows.
 cf.train.f <- cf.train[which(cf.train$fincf > 0),] #482 out of 1722 variables remain
