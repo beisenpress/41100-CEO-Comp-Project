@@ -370,42 +370,47 @@ qqnorm(rstudent(fv.reg.BIC))
 
 #Select columns for analysis
 cf.train <- train[c("TDC1","fincf", "ivncf", "oancf")]
+cf.train$fincf_cr <- sign(cf.train$fincf)*(abs(cf.train$fincf)^(1/3))
+cf.train$ivncf_cr <- sign(cf.train$ivncf)*(abs(cf.train$ivncf)^(1/3))
+cf.train$oancf_cr <- sign(cf.train$oancf)*(abs(cf.train$oancf)^(1/3))
+
 
 #Identify how many CEOs have all positive cash flows.  Only 6 out of the 1722 observations have all positive cash flows.
 cf.train.f <- cf.train[which(cf.train$fincf > 0),] #482 out of 1722 variables remain
-cf.train.i <- cf.train.1[which(cf.train$ivncf > 0),]  #160 out of 1722 remain
-cf.train.o <- cf.train.1[which(cf.train$oancf > 0),]  #1282 out of 1722 remain
-#Many of the CEOs are in companies with at least one of the cash flows as a negative value.  This is okay for now.
+cf.train.i <- cf.train[which(cf.train$ivncf > 0),]  #160 out of 1722 remain
+cf.train.o <- cf.train[which(cf.train$oancf > 0),]  #1282 out of 1722 remain
+#Many of the CEOs are in companies with at least one of the cash flows as a negative value.  
+#Operating Cash Flow is the best indication of a firm's performance and profitability.  Rather Investing and Financing
+#mean that the firm is just taking out or selling assets.
 
 #Plot the CFs against log(TDC1).  
 frame()
-par(mfrow=c(1,3))
+par(mfrow=c(2,3))
 
+#Plot CFs
 plot(cf.train$fincf,log(cf.train$TDC1),pch=20,xlab = "Financing Cash Flow", ylab = "Log of TDC1")
 plot(cf.train$ivncf,log(cf.train$TDC1),pch=20,xlab = "Investing Cash Flow", ylab = "Log of TDC1")
 plot(cf.train$oancf,log(cf.train$TDC1),pch=20,xlab = "Operating Cash Flow", ylab = "Log of TDC1")
 
-#Transform the cash flows in order to break up clustering and trumpet shapes and plot
-#Log will remove any negative CF values or NA log(CF) values
-plot(log(cf.train$fincf),log(cf.train$TDC1),pch=20,xlab = "Log of Financing Cash Flow", ylab = "Log of TDC1")
-plot(log(cf.train$ivncf),log(cf.train$TDC1),pch=20,xlab = "Log of Investing Cash Flow", ylab = "Log of TDC1") # Most are negative and typically negative if acquiring more assets per year.
-plot(log(cf.train$oancf),log(cf.train$TDC1),pch=20,xlab = "Log of Operating Cash Flow", ylab = "Log of TDC1")
+#Plot Cube Roots
+plot(cf.train$fincf_cr,log(cf.train$TDC1),pch=20,xlab = "Financing Cash Flow Cube Root", ylab = "Log of TDC1")
+plot(cf.train$ivncf_cr,log(cf.train$TDC1),pch=20,xlab = "Investing Cash Flow Cube Root", ylab = "Log of TDC1")
+plot(cf.train$oancf_cr,log(cf.train$TDC1),pch=20,xlab = "Operating Cash Flow Cube Root", ylab = "Log of TDC1")
 
-summary(lm(log(cf.train.o$TDC1)~log(cf.train.o$oancf)))
-summary(lm(log(cf.train.i$TDC1)~log(cf.train.i$ivncf)))
-summary(lm(log(cf.train.f$TDC1)~log(cf.train.f$fincf)))
 
 #OANCF demonstrates a high s value.  It is known that there may be collinearity considering that salary is an operating expense.  
-#Regression should remove oancf
+#However, OANCF contains a number of other inputs and CEO compensation is just one of those items.  The ratio between CEO compensation and 
+#OANCF would be neglible.  As such, OANCF should remain in the regression.
 
 #Variable selection using AIC and BIC without logs
 cf.null <- lm(log(cf.train$TDC1) ~ 1, data=cf.train)
-cf.full <- lm(log(cf.train$TDC1) ~ cf.train$fincf + cf.train$ivncf, data=cf.train)
+cf.full <- lm(log(cf.train$TDC1) ~ ., data=cf.train)
 
 cf.reg.AIC <- step(cf.null, scope=formula(cf.full), direction="forward", k=2)
 cf.reg.BIC <- step(cf.null, scope=formula(cf.full), direction="forward", k=log(nrow(cf.train)))
 cf.reg.AICi <- step(cf.reg.AIC, scope= ~. + .^2, direction="forward", k=2)
 cf.reg.BICi <- step(cf.reg.BIC, scope= ~. + .^2, direction="forward", k=log(nrow(cf.train)))
+
 
 #Determine the best model
 BIC <- c(cf.reg.AIC=extractAIC(cf.reg.AIC, k=log(nrow(cf.train)))[2],
@@ -415,57 +420,22 @@ BIC <- c(cf.reg.AIC=extractAIC(cf.reg.AIC, k=log(nrow(cf.train)))[2],
 eBIC <- exp(-0.5*(BIC-min(BIC)))
 
 round(probs <- eBIC/sum(eBIC,1),5)
+# AICi is the best model from stepwise forward regression
 
-summary(cf.reg.BIC)
-#lm(formula = log(cf.train$TDC1) ~ ivncf + fincf, data = cf.train)
+summary(cf.reg.AICi)
+#lm(formula = log(cf.train$TDC1) ~ oancf_cr + ivncf_cr + fincf_cr + 
+#     oancf + oancf_cr:fincf_cr + oancf_cr:ivncf_cr + ivncf_cr:oancf + 
+#     fincf_cr:oancf + ivncf_cr:fincf_cr, data = cf.train)
 
-# Show diagnosic plots
-par(mfrow=c(1,4))
-plot(cf.reg.BIC$fitted.values,residuals(cf.reg.BIC), pch=20, main = "Fitted Values and Residuals")
-abline(h=0)
-plot(cf.reg.BIC$fitted.values,rstudent(cf.reg.BIC), pch=20, main = "Fitted Values and Studentized Residuals")
-abline(h=0)
-hist(rstudent(cf.reg.BIC))
-qqnorm(rstudent(cf.reg.BIC))
-abline(a=0,b=1)
-#Studentized residual plot still clusters
+summary(cf.reg.BICi)
+#lm(formula = log(cf.train$TDC1) ~ oancf_cr + ivncf_cr + fincf_cr + 
+#     oancf + oancf_cr:fincf_cr + oancf_cr:ivncf_cr + ivncf_cr:oancf + 
+#     fincf_cr:oancf + ivncf_cr:fincf_cr, data = cf.train)
 
-#Variable selection with logs
-cf.full.1 <- lm(log(cf.train$TDC1) ~ cf.train$fincf^2 + cf.train$ivncf^2, data=cf.train)
-
-#Given that there are so many negative values, testing if squaring it with the log transformation will work
-frame()
-plot(log(cf.train$fincf^2), log(cf.train$TDC1))
-plot(log(cf.train$ivncf^2), log(cf.train$TDC1))
-
-# Do forward stepwise regression
-cf.null <- lm(log(cf.train$TDC1) ~ 1, data=cf.train)
-cf.full <- lm(log(cf.train$TDC1) ~ log(cf.train$fincf^2) + log(cf.train$ivncf^2), data=cf.train)
-
-cf.reg2.AIC <- step(cf.null, scope=formula(cf.full), direction="forward", k=2)
-cf.reg2.BIC <- step(cf.null, scope=formula(cf.full), direction="forward", k=log(nrow(cf.train)))
-cf.reg2.AICi <- step(cf.reg.AIC, scope= ~. + .^2, direction="forward", k=2)
-cf.reg2.BICi <- step(cf.reg.BIC, scope= ~. + .^2, direction="forward", k=log(nrow(cf.train)))
-
-#Determine the best model
-BIC <- c(cf.reg2.AIC=extractAIC(cf.reg2.AIC, k=log(nrow(cf.train)))[2],
-         cf.reg2.BIC=extractAIC(cf.reg2.BIC, k=log(nrow(cf.train)))[2])
-#         cf.reg2.AICi=extractAIC(cf.reg2.AICi, k=log(nrow(cf.train)))[2],
-#         cf.reg2.BICi=extractAIC(cf.reg2.BICi, k=log(nrow(cf.train)))[2])
-eBIC <- exp(-0.5*(BIC-min(BIC)))
-
-round(probs <- eBIC/sum(eBIC,1),5)
-
-summary(cf.reg2.BIC)
-#lm(formula = log(cf.train$TDC1) ~ log(cf.train$fincf^2) + log(cf.train$ivncf^2) + log(cf.train$fincf^2):log(cf.train$ivncf^2), data = cf.train)
-
-frame()
-# Show diagnosic plots
+# Show diagnostic plots
 par(mfrow=c(1,3))
-plot(cf.reg2.BIC$fitted.values,rstudent(cf.reg2.BIC), pch=20, main = "Fitted Values and Studentized Residuals")
+plot(cf.reg.AICi$fitted.values,rstudent(cf.reg.AICi), pch=20, main = "Fitted Values and Studentized Residuals")
 abline(h=0)
-hist(rstudent(cf.reg2.BIC))
-qqnorm(rstudent(cf.reg2.BIC))
-abline(a=0,b=1)
-# Good but a little but of skew
+hist(rstudent(blah))
+qqnorm(rstudent(blah))
 abline(a=0,b=1)
