@@ -1,6 +1,3 @@
-
-
-
 #setwd("/Users/ben/dropbox/Chicago Booth/41100 Regressions/Project/41100-CEO-Comp-Project")
 #setwd("/Users/Leixin Zhao/Desktop/2015_16 Fall/41100 Applied Regression/Final Paper/41100-CEO-Comp-Project")
 #setwd("~/Documents/Booth/Class/41100 - Regressions/Project")
@@ -73,7 +70,7 @@ removedCEOs <- combined2[which(combined2$TDC1 <= 0.001),]
 
 ############# Additinal Variables ############
 # Create a new dataset, combined4, to add new variables
-combined4 <- combined3
+combined4 <- combined3[which(combined3$mv != "NA"),]
 
 # Create acalculated TDC1 variable.  This will help us break up the components later.
 combined4$TDC1_Calc <- rowSums(cbind(combined4$SALARY, combined4$BONUS, combined4$NONEQ_INCENT, 
