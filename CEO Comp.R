@@ -102,10 +102,10 @@ combined4$pstk[is.na(combined4$pstk)] <- 0
 combined4$che[is.na(combined4$che)] <- 0
 
 # Create new variables for the cube root of enterprise value variables
-combined4$dlc_cr <- combined4$dlc^(1/3)
-combined4$dltt_cr <- combined4$dltt^(1/3)
-combined4$pstk_cr <- combined4$pstk^(1/3)
-combined4$che_cr <- combined4$che^(1/3)
+combined4$dlc_cr <- sign(combined4$dlc)*(abs(combined4$dlc)^(1/3))
+combined4$dltt_cr <- sign(combined4$dltt)*(abs(combined4$dltt)^(1/3))
+combined4$pstk_cr <- sign(combined4$pstk)*(abs(combined4$pstk)^(1/3))
+combined4$che_cr <- sign(combined4$pstk)*(abs(combined4$pstk)^(1/3))
 
 ################# Select Industry ##################################
 
@@ -265,7 +265,7 @@ abline(a=0,b=1)
 # Re-do AIC and BIC with industry classification in the full model
 ev.reg3.AIC <- step(ev.reg1, scope=formula(ev.reg3), direction="forward", k=2)
 ev.reg3.BIC <- step(ev.reg1, scope=formula(ev.reg3), direction="forward", k=log(nrow(train)))
-summary(ev.reg3.AIC)
+summary(ev.reg3.BIC)
 
 # Neither AIC nor BIC adds industry classification
 
