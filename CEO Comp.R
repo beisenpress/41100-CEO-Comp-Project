@@ -95,6 +95,11 @@ combined4$der <- combined4$dt / combined4$seq
 combined4$atr <- (combined4$che + combined4$artfs) / combined4$lct
 combined4$ic <- combined4$ebit / combined4$xint
 
+# Log select financial variables
+combined4$logroe = log(combined4$roe)
+combined4$logder = log(combined4$der)
+combined4$logwcap = log(combined4$wcap)
+
 # Fill in missing enterprise value variables with zeros
 combined4$dlc[is.na(combined4$dlc)] <- 0
 combined4$dltt[is.na(combined4$dltt)] <- 0
@@ -342,11 +347,6 @@ plot(trainclean$dr,log(trainclean$TDC1),pch=20,xlab = "Debt Ratio", ylab = "Log 
 
 plot(log(trainclean$der),log(trainclean$TDC1),pch=20,xlab = "Log of Debt to Equity Ratio", ylab = "Log of TDC1")
 plot(log(trainclean$wcap),log(trainclean$TDC1),pch=20,xlab = "Log of Working Capital", ylab = "Log of TDC1")
-
-
-trainclean$logroe = log(trainclean$roe)
-trainclean$logder = log(trainclean$der)
-trainclean$logwcap = log(trainclean$wcap)
 
 
 #Forward stepwise BIC
