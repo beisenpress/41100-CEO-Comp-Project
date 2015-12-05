@@ -430,5 +430,37 @@ comb.reg.null <- lm(log(TDC1) ~ 1, data = train.select)
 comb.reg.full <- lm(log(TDC1) ~ . + .^2, data = train.select)
 summary(comb.reg.full)
 
-# Run BIC
+# Run BIC on combined regression
 comb.reg.BIC <- step(comb.reg.null, scope=formula(comb.reg.full), direction="forward", k=log(nrow(train)))
+
+# Plot diagnostics for combined regression
+par(mfrow=c(1,3))
+plot(comb.reg.BIC$fitted.values,rstudent(comb.reg.BIC), pch=20, main = "Fitted Values and Studentized Residuals")
+hist(rstudent(comb.reg.BIC))
+qqnorm(rstudent(comb.reg.BIC))
+abline(a=0,b=1)
+
+comb.reg.diagnositcs <- train.select
+comb.reg.diagnositcs$fitted.values <- comb.reg.BIC$fitted.values
+comb.reg.diagnositcs$residuals <- comb.reg.BIC$residuals
+comb.reg.diagnositcs$stresiduals <- rstudent(comb.reg.BIC)
+write.csv(comb.reg.diagnositcs[which(comb.reg.diagnositcs$stresiduals < -4),], file = "Regression Diagnostics - Combined.csv")
+
+################# Compare MSE Between Regressions #############
+
+# Final regressions for consideration:
+# ev.reg1
+# ev.reg2.BIC
+# fv.reg.BIC
+# cf.reg.BIC
+# comb.reg.BIC
+
+err.evreg1 <- predict(ev.reg1, newdata=test) - log(test$TDC1)
+err.evreg2.BIC <- predict(ev.reg2.BIC, newdata=test) - log(test$TDC1)
+err.fv.reg.BIC <- predict(fv.reg.BIC, newdata=test) - log(test$TDC1)
+err.cf.reg.BIC <- predict(cf.reg.BICi, newdata=test) - log(test$TDC1)
+err.comb.reg.BIC <- predict(comb.reg.BIC, newdata=test) - log(test$TDC1)
+
+c(evreg1=mean(err.evreg1^2,na.rm=TRUE),evreg2.BIC=mean(err.evreg2.BIC^2,na.rm=TRUE),fv.reg.BIC=mean(err.fv.reg.BIC^2,na.rm=TRUE),cf.reg.BICi=mean(err.cf.reg.BIC^2,na.rm=TRUE),comb.reg.BIC=mean(err.comb.reg.BIC^2,na.rm=TRUE))
+
+# regression 5 has the lowest MSE
