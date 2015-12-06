@@ -74,3 +74,19 @@ ev.reg2.AIC <- step(ev.reg1, scope=formula(ev.reg2), direction="forward", k=2)
 ev.reg2.BIC <- step(ev.reg1, scope=formula(ev.reg2), direction="forward", k=log(nrow(train)))
 summary(ev.reg2.BIC)
 
+
+#### Kitchen Sink Regression #########
+
+train.select <- train[,c("TDC1", "logmv", "dltt_cr", "dlc_cr", "pstk_cr", "che_cr", 
+                         "Industry_Code4", "bkvlps", "croa", "dpr", 
+                         "epsfx", "gmargin","roa", "roe", "aturn", "dr",
+                         "der", "wcap", "fincf_cr", "ivncf_cr", "oancf_cr")]
+
+
+# Create null and full models
+comb.reg.null <- lm(log(TDC1) ~ 1, data = train.select)
+comb.reg.full <- lm(log(TDC1) ~ . + .^2, data = train.select)
+
+# Run BIC on combined regression
+comb.reg.BIC2 <- step(comb.reg.null, scope=formula(comb.reg.full), direction="forward", k=log(nrow(train)))
+summary(comb.reg.BIC1)
