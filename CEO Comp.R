@@ -466,3 +466,10 @@ err.comb.reg.BIC <- predict(comb.reg.BIC, newdata=test) - log(test$TDC1)
 c(evreg1=mean(err.evreg1^2,na.rm=TRUE),evreg2.BIC=mean(err.evreg2.BIC^2,na.rm=TRUE),fv.reg.BIC=mean(err.fv.reg.BIC^2,na.rm=TRUE),cf.reg.BICi=mean(err.cf.reg.BIC^2,na.rm=TRUE),comb.reg.BIC=mean(err.comb.reg.BIC^2,na.rm=TRUE))
 
 # regression 5 has the lowest MSE
+
+############### Fit final model with the kitchen sink regression #######
+
+reg.final <- lm(formula = log(TDC1) ~ logmv + dr + pstk_cr + roa + oancf_cr + 
+     aturn + dltt_cr + fincf_cr + dr:pstk_cr + logmv:oancf_cr + 
+     logmv:dltt_cr, data = combined4)
+summary(reg.final)
